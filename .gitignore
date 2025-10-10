@@ -1,0 +1,39 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go build output
+/bin/
+/build/
+/dist/
+/out/
+
+# Test binary
+*.test
+
+# Dependency directories
+vendor/
+
+# Go workspace stuff
+go.work
+go.work.sum
+
+# IDE & editor stuff
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.*
+
+# Air temp file
+.tmp/
+.air/

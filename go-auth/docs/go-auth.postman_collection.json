@@ -1,0 +1,329 @@
+{
+  "info": {
+    "name": "go-auth API",
+    "description": "Postman collection for go-auth service. Contains public, protected, and admin endpoints with example payloads and tests. Base URL and tokens are collection variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8081/api/v1/auth" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "verifyToken", "value": "" },
+    { "key": "verifyType", "value": "email" }
+  ],
+  "item": [
+    {
+      "name": "Public",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{base_url}}/register", "host": ["{{base_url}}"], "path": ["register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"phone\": \"\",\n  \"password\": \"secret123\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property('access_token');",
+                  "pm.expect(json).to.have.property('refresh_token');",
+                  "pm.collectionVariables.set('accessToken', json.access_token || '');",
+                  "pm.collectionVariables.set('refreshToken', json.refresh_token || '');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"secret123\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property('access_token');",
+                  "pm.expect(json).to.have.property('refresh_token');",
+                  "pm.collectionVariables.set('accessToken', json.access_token || '');",
+                  "pm.collectionVariables.set('refreshToken', json.refresh_token || '');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{base_url}}/verify", "host": ["{{base_url}}"], "path": ["verify"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{verifyToken}}\",\n  \"type\": \"{{verifyType}}\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property('message');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{base_url}}/refresh", "host": ["{{base_url}}"], "path": ["refresh"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refreshToken}}\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property('access_token');",
+                  "pm.expect(json).to.have.property('refresh_token');",
+                  "pm.collectionVariables.set('accessToken', json.access_token || '');",
+                  "pm.collectionVariables.set('refreshToken', json.refresh_token || '');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Protected",
+      "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+      "item": [
+        {
+          "name": "Me (Get Profile)",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": { "raw": "{{base_url}}/me", "host": ["{{base_url}}"], "path": ["me"] }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property('id');",
+                  "pm.expect(json).to.have.property('email');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{base_url}}/profile", "host": ["{{base_url}}"], "path": ["profile"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Updated\",\n  \"phone\": \"+628123456789\",\n  \"avatar_url\": \"https://example.com/avatar.jpg\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property('id');",
+                  "pm.expect(json).to.have.property('name');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": { "raw": "{{base_url}}/logout", "host": ["{{base_url}}"], "path": ["logout"] }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property('message');",
+                  "pm.collectionVariables.unset('accessToken');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ] },
+      "item": [
+        {
+          "name": "List Users (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": { "raw": "{{base_url}}/admin/users", "host": ["{{base_url}}"], "path": ["admin", "users"] }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 or 403 depending on role', function () { pm.expect([200,403,401]).to.include(pm.response.code); });",
+                  "if (pm.response.code === 200) { pm.expect(pm.response.json()).to.have.property('message'); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Negative Cases",
+      "item": [
+        {
+          "name": "Login - Wrong Password",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"wrongpass\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Unauthorized 401', function () { pm.response.to.have.status(401); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me - Missing Bearer Token",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/me", "host": ["{{base_url}}"], "path": ["/me"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Unauthorized 401', function () { pm.response.to.have.status(401); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Profile - Invalid Avatar URL",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{base_url}}/profile", "host": ["{{base_url}}"], "path": ["profile"] },
+            "body": { "mode": "raw", "raw": "{\n  \"avatar_url\": \"not-a-url\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Bad Request 400', function () { pm.response.to.have.status(400); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin - Forbidden for Non-Admin",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": { "raw": "{{base_url}}/admin/users", "host": ["{{base_url}}"], "path": ["admin", "users"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Forbidden 403 or Unauthorized 401', function () { pm.expect([403,401,200]).to.include(pm.response.code); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

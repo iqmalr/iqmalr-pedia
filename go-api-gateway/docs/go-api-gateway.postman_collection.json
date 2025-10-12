@@ -1,0 +1,237 @@
+{
+  "info": {
+    "name": "go-api-gateway API",
+    "description": "Postman collection for go-api-gateway. Contains health checks, service discovery, auth proxy, and service proxy endpoints with examples and basic tests. Base URL and tokens are collection variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080" },
+    { "key": "accessToken", "value": "" },
+    { "key": "service", "value": "auth" },
+    { "key": "path", "value": "/api/v1/auth/login" },
+    { "key": "proxy_path", "value": "/auth/login" }
+  ],
+  "item": [
+    {
+      "name": "Root",
+      "item": [
+        {
+          "name": "GET /",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/", "host": ["{{base_url}}"], "path": [""] }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property('message');",
+                  "pm.expect(json).to.have.property('version');",
+                  "pm.expect(json).to.have.property('status');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/health", "host": ["{{base_url}}"], "path": ["health"] }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.expect(pm.response.json()).to.have.property('status');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /ready",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/ready", "host": ["{{base_url}}"], "path": ["ready"] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Service Discovery",
+      "item": [
+        {
+          "name": "GET /api/services",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/services", "host": ["{{base_url}}"], "path": ["api", "services"] }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property('services');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth Proxy (via Gateway)",
+      "item": [
+        {
+          "name": "POST /api/v1/auth/register",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{base_url}}/api/v1/auth/register", "host": ["{{base_url}}"], "path": ["api", "v1", "auth", "register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"phone\": \"\",\n  \"password\": \"secret123\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const ok = pm.response.code === 200 || pm.response.code === 201;",
+                  "pm.test('Status code is 200/201', function () { pm.expect(ok).to.be.true; });",
+                  "let json = {}; try { json = pm.response.json(); } catch (e) {}",
+                  "if (json.access_token) pm.collectionVariables.set('accessToken', json.access_token);",
+                  "if (json.refresh_token) pm.collectionVariables.set('refreshToken', json.refresh_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/v1/auth/login",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{base_url}}/api/v1/auth/login", "host": ["{{base_url}}"], "path": ["api", "v1", "auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"secret123\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property('access_token');",
+                  "pm.collectionVariables.set('accessToken', json.access_token || '');",
+                  "if (json.refresh_token) pm.collectionVariables.set('refreshToken', json.refresh_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/v1/auth/me",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": { "raw": "{{base_url}}/api/v1/auth/me", "host": ["{{base_url}}"], "path": ["api", "v1", "auth", "me"] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Service Proxy v1",
+      "item": [
+        {
+          "name": "ANY /api/v1/services/:service/*path (optional auth)",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}", "disabled": true } ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/services/{{service}}/*",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "services", "{{service}}", "*"]
+            }
+          },
+          "response": [],
+          "description": "Template endpoint. Replace * with your downstream path (e.g., /users)."
+        },
+        {
+          "name": "ANY /api/v1/protected/:service/*path (requires auth)",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/protected/{{service}}/*",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "protected", "{{service}}", "*"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "ANY /api/v1/admin/:service/*path (requires auth)",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/{{service}}/*",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "admin", "{{service}}", "*"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Service Proxy v2",
+      "item": [
+        {
+          "name": "ANY /api/v2/:service/*path (optional auth)",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}", "disabled": true } ],
+            "url": {
+              "raw": "{{base_url}}/api/v2/{{service}}/*",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v2", "{{service}}", "*"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

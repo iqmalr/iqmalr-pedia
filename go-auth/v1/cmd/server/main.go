@@ -2,11 +2,11 @@ package server
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/iqmalr-pedia/go-auth/internal/handlers"
-	"github.com/iqmalr-pedia/go-auth/internal/middleware"
-	"github.com/iqmalr-pedia/go-auth/internal/repositories"
-	"github.com/iqmalr-pedia/go-auth/internal/services"
-	"github.com/iqmalr-pedia/go-auth/pkg/database"
+	"github.com/iqmalr-pedia/go-auth/v1/internal/handlers"
+	"github.com/iqmalr-pedia/go-auth/v1/internal/middleware"
+	"github.com/iqmalr-pedia/go-auth/v1/internal/repositories"
+	"github.com/iqmalr-pedia/go-auth/v1/internal/services"
+	"github.com/iqmalr-pedia/go-auth/v1/pkg/database"
 )
 
 func Main() {

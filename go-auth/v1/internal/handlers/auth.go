@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/iqmalr-pedia/go-auth/internal/dto/request"
-	"github.com/iqmalr-pedia/go-auth/internal/services"
+	"github.com/iqmalr-pedia/go-auth/v1/internal/dto/request"
+	"github.com/iqmalr-pedia/go-auth/v1/internal/services"
 )
 
 type AuthHandler struct {

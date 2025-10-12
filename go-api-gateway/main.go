@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/iqmalr-pedia/go-auth/cmd/server"
+	"github.com/iqmalr-pedia/go-api-gateway/v1/cmd/server"
 )
 
 func main() {

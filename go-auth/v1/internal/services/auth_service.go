@@ -5,11 +5,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/iqmalr-pedia/go-auth/internal/dto/request"
-	"github.com/iqmalr-pedia/go-auth/internal/dto/response"
-	"github.com/iqmalr-pedia/go-auth/internal/models"
-	"github.com/iqmalr-pedia/go-auth/internal/repositories"
-	"github.com/iqmalr-pedia/go-auth/internal/utils"
+	"github.com/iqmalr-pedia/go-auth/v1/internal/dto/request"
+	"github.com/iqmalr-pedia/go-auth/v1/internal/dto/response"
+	"github.com/iqmalr-pedia/go-auth/v1/internal/models"
+	"github.com/iqmalr-pedia/go-auth/v1/internal/repositories"
+	"github.com/iqmalr-pedia/go-auth/v1/internal/utils"
 )
 
 type AuthService struct {

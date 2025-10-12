@@ -3,7 +3,7 @@ package repositories
 import (
 	"time"
 
-	"github.com/iqmalr-pedia/go-auth/internal/models"
+	"github.com/iqmalr-pedia/go-auth/v1/internal/models"
 	"gorm.io/gorm"
 )
 

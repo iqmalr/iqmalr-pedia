@@ -15,6 +15,7 @@ type User struct {
 	Phone           string         `json:"phone" gorm:"size:20"`
 	Password        string         `json:"-" gorm:"not null"`
 	Role            string         `json:"role" gorm:"not null;default:'customer';size:50"`
+	AvatarUrl       string         `json:"avatar_url" gorm:"size:500"`
 	IsActive        bool           `json:"is_active" gorm:"not null;default:true"`
 	EmailVerifiedAt *time.Time     `json:"email_verified_at"`
 	PhoneVerifiedAt *time.Time     `json:"phone_verified_at"`

@@ -310,6 +310,219 @@
       ]
     },
     {
+      "name": "Users",
+      "item": [
+        {
+          "name": "GET /users/me",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{access_token_customer}}" } ],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "users", "me"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property('email');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /users/me",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token_customer}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "users", "me"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe Updated\",\n  \"phone\": \"+6281234567890\",\n  \"avatar_url\": \"https://example.com/avatar.jpg\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property('name');",
+                  "pm.expect(json).to.have.property('avatar_url');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /users/me/password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token_customer}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/users/me/password",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "users", "me", "password"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"StrongPass123\",\n  \"new_password\": \"NewStrongPass123\",\n  \"new_password_confirmation\": \"NewStrongPass123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "pm.test('Has message', () => pm.response.json().message);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin (Users)",
+          "item": [
+            {
+              "name": "GET /users (list)",
+              "request": {
+                "method": "GET",
+                "header": [ { "key": "Authorization", "value": "Bearer {{access_token_admin}}" } ],
+                "url": {
+                  "raw": "{{baseUrl}}{{apiPrefix}}/users?page=1&limit=10&search=&role=&is_active=",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "users"],
+                  "query": [
+                    { "key": "page", "value": "1" },
+                    { "key": "limit", "value": "10" },
+                    { "key": "search", "value": "" },
+                    { "key": "role", "value": "" },
+                    { "key": "is_active", "value": "" }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.code === 200);",
+                      "const json = pm.response.json();",
+                      "pm.expect(json).to.have.property('data');",
+                      "pm.expect(json).to.have.property('pagination');"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /users/:id",
+              "request": {
+                "method": "GET",
+                "header": [ { "key": "Authorization", "value": "Bearer {{access_token_admin}}" } ],
+                "url": {
+                  "raw": "{{baseUrl}}{{apiPrefix}}/users/{{userId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "users", "{{userId}}"]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.code === 200);",
+                      "pm.expect(pm.response.json()).to.have.property('id');"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT /users/:id",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{access_token_admin}}" }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}{{apiPrefix}}/users/{{userId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "users", "{{userId}}"]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Updated Name\",\n  \"email\": \"updated@example.com\",\n  \"phone\": \"+628111111111\",\n  \"role\": \"vendor\",\n  \"is_active\": true\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.code === 200);",
+                      "const json = pm.response.json();",
+                      "pm.expect(json).to.have.property('id');",
+                      "pm.expect(json).to.have.property('email');"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /users/:id",
+              "request": {
+                "method": "DELETE",
+                "header": [ { "key": "Authorization", "value": "Bearer {{access_token_admin}}" } ],
+                "url": {
+                  "raw": "{{baseUrl}}{{apiPrefix}}/users/{{userId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "users", "{{userId}}"]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.code === 200);",
+                      "pm.test('Has message', () => pm.response.json().message);"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Admin",
       "item": [
         {

@@ -44,13 +44,38 @@ type UserProfileResponse struct {
 	Email           string     `json:"email"`
 	Phone           string     `json:"phone"`
 	Role            string     `json:"role"`
+	AvatarUrl       string     `json:"avatar_url"`
 	IsActive        bool       `json:"is_active"`
 	EmailVerifiedAt *time.Time `json:"email_verified_at"`
 	PhoneVerifiedAt *time.Time `json:"phone_verified_at"`
 	LastLoginAt     *time.Time `json:"last_login_at"`
 	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
 type MessageResponse struct {
 	Message string `json:"message"`
+}
+
+type UserListItem struct {
+	ID        uint      `json:"id"`
+	UUID      string    `json:"uuid"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
+	Phone     string    `json:"phone"`
+	Role      string    `json:"role"`
+	IsActive  bool      `json:"is_active"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type UserListResponse struct {
+	Data       []UserListItem     `json:"data"`
+	Pagination PaginationResponse `json:"pagination"`
+}
+
+type PaginationResponse struct {
+	TotalPages int   `json:"total_pages"`
+	Total      int64 `json:"total"`
+	Page       int   `json:"page"`
+	Limit      int   `json:"limit"`
 }

@@ -28,6 +28,11 @@ type UserRepositoryInterface interface {
 	DeleteExpiredEmailVerificationTokens() error
 	FindEmailVerificationTokenByUserID(userID uint) (*models.EmailVerificationToken, error)
 	DeleteEmailVerificationTokenByUserID(userID uint) error
+	UpdateProfile(userID uint, updates map[string]interface{}) error
+	ChangePassword(userID uint, hashedPassword string) error
+	FindUsersWithPagination(page, limit int, search, role string, isActive *bool) ([]models.User, int64, error)
+	DeactivateUser(userID uint) error
+	FindUserByEmailAndNotID(email string, id uint) (*models.User, error)
 }
 
 func NewUserRepository(db *gorm.DB) *UserRepository {
@@ -115,4 +120,51 @@ func (r *UserRepository) FindEmailVerificationTokenByUserID(userID uint) (*model
 
 func (r *UserRepository) DeleteEmailVerificationTokenByUserID(userID uint) error {
 	return r.db.Where("user_id = ?", userID).Delete(&models.EmailVerificationToken{}).Error
+}
+
+func (r *UserRepository) UpdateProfile(userID uint, updates map[string]interface{}) error {
+	return r.db.Model(&models.User{}).Where("id = ?", userID).Updates(updates).Error
+}
+
+func (r *UserRepository) ChangePassword(userID uint, hashedPassword string) error {
+	return r.db.Model(&models.User{}).Where("id = ?", userID).Update("password", hashedPassword).Error
+}
+
+func (r *UserRepository) FindUsersWithPagination(page, limit int, search, role string, isActive *bool) ([]models.User, int64, error) {
+	var users []models.User
+	var total int64
+
+	query := r.db.Model(&models.User{})
+
+	if search != "" {
+		searchPattern := "%" + search + "%"
+		query = query.Where("name ILIKE ? OR email ILIKE ?", searchPattern, searchPattern)
+	}
+	if role != "" {
+		query = query.Where("role = ?", role)
+	}
+	if isActive != nil {
+		query = query.Where("is_active = ?", *isActive)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * limit
+	if err := query.Offset(offset).Limit(limit).Find(&users).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return users, total, nil
+}
+
+func (r *UserRepository) DeactivateUser(userID uint) error {
+	return r.db.Model(&models.User{}).Where("id = ?", userID).Update("is_active", false).Error
+}
+
+func (r *UserRepository) FindUserByEmailAndNotID(email string, id uint) (*models.User, error) {
+	var user models.User
+	err := r.db.Where("email = ? AND id != ?", email, id).First(&user).Error
+	return &user, err
 }

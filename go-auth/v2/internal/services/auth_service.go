@@ -20,20 +20,25 @@ func NewAuthService(userRepo repositories.UserRepositoryInterface) *AuthService 
 	return &AuthService{userRepo: userRepo}
 }
 
+type UserService struct {
+	userRepo repositories.UserRepositoryInterface
+}
+
+func NewUserService(userRepo repositories.UserRepositoryInterface) *UserService {
+	return &UserService{userRepo: userRepo}
+}
+
 func (s *AuthService) Register(req *request.RegisterRequest) (*response.RegisterResponse, error) {
-	// Check if user already exists
 	_, err := s.userRepo.FindUserByEmail(req.Email)
 	if err == nil {
 		return nil, errors.New("user with this email already exists")
 	}
 
-	// Hash password
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create user
 	user := &models.User{
 		UUID:     uuid.New(),
 		Name:     req.Name,
@@ -53,7 +58,6 @@ func (s *AuthService) Register(req *request.RegisterRequest) (*response.Register
 		return nil, err
 	}
 
-	// Create email verification token
 	token := &models.EmailVerificationToken{
 		UserID:    user.ID,
 		Token:     utils.GenerateRandomToken(32),
@@ -83,41 +87,34 @@ func (s *AuthService) Register(req *request.RegisterRequest) (*response.Register
 }
 
 func (s *AuthService) Login(req *request.LoginRequest) (*response.LoginResponse, error) {
-	// Find user by email
 	user, err := s.userRepo.FindUserByEmail(req.Email)
 	if err != nil {
 		return nil, errors.New("invalid email or password")
 	}
 
-	// Check password
 	if !utils.CheckPasswordHash(req.Password, user.Password) {
 		return nil, errors.New("invalid email or password")
 	}
 
-	// Check if user is active
 	if !user.IsActive {
 		return nil, errors.New("account is deactivated")
 	}
 
-	// Update last login
 	err = s.userRepo.UpdateLastLogin(user.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Generate JWT token
 	token, err := utils.GenerateToken(user.ID, user.UUID.String(), user.Email, user.Role)
 	if err != nil {
 		return nil, err
 	}
 
-	// Generate refresh token
 	refreshToken, err := utils.GenerateRefreshToken(user.ID, user.UUID.String(), user.Email, user.Role)
 	if err != nil {
 		return nil, err
 	}
 
-	// Save refresh token to user
 	user.RefreshToken = refreshToken
 	err = s.userRepo.UpdateUser(user)
 	if err != nil {
@@ -144,30 +141,25 @@ func (s *AuthService) Logout(userID uint) error {
 		return err
 	}
 
-	// Clear refresh token
 	user.RefreshToken = ""
 	return s.userRepo.UpdateUser(user)
 }
 
 func (s *AuthService) RefreshToken(refreshToken string) (*response.RefreshTokenResponse, error) {
-	// Verify refresh token
 	claims, err := utils.VerifyToken(refreshToken)
 	if err != nil {
 		return nil, errors.New("invalid refresh token")
 	}
 
-	// Find user
 	user, err := s.userRepo.FindUserByID(claims.UserID)
 	if err != nil {
 		return nil, errors.New("user not found")
 	}
 
-	// Check if refresh token matches
 	if user.RefreshToken != refreshToken {
 		return nil, errors.New("invalid refresh token")
 	}
 
-	// Generate new access token
 	token, err := utils.GenerateToken(user.ID, user.UUID.String(), user.Email, user.Role)
 	if err != nil {
 		return nil, err
@@ -184,7 +176,6 @@ func (s *AuthService) ForgotPassword(email string) error {
 		return errors.New("user with this email does not exist")
 	}
 
-	// Create password reset token
 	token := &models.PasswordResetToken{
 		UserID:    user.ID,
 		Token:     utils.GenerateRandomToken(32),
@@ -202,32 +193,27 @@ func (s *AuthService) ForgotPassword(email string) error {
 }
 
 func (s *AuthService) ResetPassword(req *request.ResetPasswordRequest) error {
-	// Find reset token
 	resetToken, err := s.userRepo.FindPasswordResetToken(req.Token)
 	if err != nil {
 		return errors.New("invalid or expired token")
 	}
 
-	// Find user
 	user, err := s.userRepo.FindUserByID(resetToken.UserID)
 	if err != nil {
 		return err
 	}
 
-	// Hash new password
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
 		return err
 	}
 
-	// Update password
 	user.Password = hashedPassword
 	err = s.userRepo.UpdateUser(user)
 	if err != nil {
 		return err
 	}
 
-	// Mark token as used
 	resetToken.Used = true
 	err = s.userRepo.UpdatePasswordResetToken(resetToken)
 	if err != nil {
@@ -238,19 +224,16 @@ func (s *AuthService) ResetPassword(req *request.ResetPasswordRequest) error {
 }
 
 func (s *AuthService) VerifyEmail(token string) error {
-	// Find verification token
 	verificationToken, err := s.userRepo.FindEmailVerificationToken(token)
 	if err != nil {
 		return errors.New("invalid or expired token")
 	}
 
-	// Find user
 	user, err := s.userRepo.FindUserByID(verificationToken.UserID)
 	if err != nil {
 		return err
 	}
 
-	// Update email verification
 	now := time.Now()
 	user.EmailVerifiedAt = &now
 	err = s.userRepo.UpdateUser(user)
@@ -258,7 +241,6 @@ func (s *AuthService) VerifyEmail(token string) error {
 		return err
 	}
 
-	// Delete verification token
 	err = s.userRepo.DeleteEmailVerificationToken(token)
 	if err != nil {
 		return err
@@ -277,13 +259,11 @@ func (s *AuthService) ResendVerification(email string) error {
 		return errors.New("email is already verified")
 	}
 
-	// Delete existing verification tokens
 	err = s.userRepo.DeleteEmailVerificationTokenByUserID(user.ID)
 	if err != nil {
 		return err
 	}
 
-	// Create new verification token
 	token := &models.EmailVerificationToken{
 		UserID:    user.ID,
 		Token:     utils.GenerateRandomToken(32),
@@ -318,5 +298,166 @@ func (s *AuthService) GetUserProfile(userID uint) (*response.UserProfileResponse
 		PhoneVerifiedAt: user.PhoneVerifiedAt,
 		LastLoginAt:     user.LastLoginAt,
 		CreatedAt:       user.CreatedAt,
+	}, nil
+}
+func (s *UserService) GetProfile(userID uint) (*response.UserProfileResponse, error) {
+	user, err := s.userRepo.FindUserByID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &response.UserProfileResponse{
+		ID:              user.ID,
+		UUID:            user.UUID.String(),
+		Name:            user.Name,
+		Email:           user.Email,
+		Phone:           user.Phone,
+		Role:            user.Role,
+		AvatarUrl:       user.AvatarUrl,
+		IsActive:        user.IsActive,
+		EmailVerifiedAt: user.EmailVerifiedAt,
+		PhoneVerifiedAt: user.PhoneVerifiedAt,
+		LastLoginAt:     user.LastLoginAt,
+		CreatedAt:       user.CreatedAt,
+		UpdatedAt:       user.UpdatedAt,
+	}, nil
+}
+
+func (s *UserService) UpdateProfile(userID uint, req *request.UpdateProfileRequest) (*response.UserProfileResponse, error) {
+	updates := make(map[string]interface{})
+	if req.Name != "" {
+		updates["name"] = req.Name
+	}
+	if req.Phone != "" {
+		updates["phone"] = req.Phone
+	}
+	if req.AvatarUrl != "" {
+		updates["avatar_url"] = req.AvatarUrl
+	}
+
+	if len(updates) == 0 {
+		return s.GetProfile(userID)
+	}
+
+	if err := s.userRepo.UpdateProfile(userID, updates); err != nil {
+		return nil, err
+	}
+
+	return s.GetProfile(userID)
+}
+
+func (s *UserService) ChangePassword(userID uint, req *request.ChangePasswordRequest) error {
+	user, err := s.userRepo.FindUserByID(userID)
+	if err != nil {
+		return err
+	}
+
+	if !utils.CheckPasswordHash(req.CurrentPassword, user.Password) {
+		return errors.New("current password is incorrect")
+	}
+
+	hashedPassword, err := utils.HashPassword(req.NewPassword)
+	if err != nil {
+		return err
+	}
+
+	return s.userRepo.ChangePassword(userID, hashedPassword)
+}
+
+func (s *UserService) GetUserByID(id uint) (*response.UserProfileResponse, error) {
+	user, err := s.userRepo.FindUserByID(id)
+	if err != nil {
+		return nil, err
+	}
+	return &response.UserProfileResponse{
+		ID:              user.ID,
+		UUID:            user.UUID.String(),
+		Email:           user.Email,
+		Phone:           user.Phone,
+		Role:            user.Role,
+		AvatarUrl:       user.AvatarUrl,
+		IsActive:        user.IsActive,
+		EmailVerifiedAt: user.EmailVerifiedAt,
+		PhoneVerifiedAt: user.PhoneVerifiedAt,
+		LastLoginAt:     user.LastLoginAt,
+		CreatedAt:       user.CreatedAt,
+		UpdatedAt:       user.UpdatedAt,
+	}, nil
+}
+
+func (s *UserService) UpdateUser(id uint, req *request.UpdateUserRequest) (*response.UserProfileResponse, error) {
+	user, err := s.userRepo.FindUserByID(id)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+
+	if req.Email != "" && req.Email != user.Email {
+		_, err := s.userRepo.FindUserByEmailAndNotID(req.Email, id)
+		if err == nil {
+			return nil, errors.New("email is already taken by another user")
+		}
+	}
+
+	updates := make(map[string]interface{})
+	if req.Name != "" {
+		updates["name"] = req.Name
+	}
+	if req.Email != "" {
+		updates["email"] = req.Email
+	}
+	if req.Phone != "" {
+		updates["phone"] = req.Phone
+	}
+	if req.Role != "" {
+		updates["role"] = req.Role
+	}
+	if req.IsActive != nil {
+		updates["is_active"] = *req.IsActive
+	}
+
+	if err := s.userRepo.UpdateProfile(id, updates); err != nil {
+		return nil, err
+	}
+
+	return s.GetUserByID(id)
+}
+
+func (s *UserService) DeactivateUser(id uint) error {
+	if err := s.userRepo.DeactivateUser(id); err != nil {
+		return errors.New("failed to deactivate user")
+	}
+	return nil
+}
+
+func (s *UserService) ListUsers(req *request.ListUsersRequest) (*response.UserListResponse, error) {
+	users, total, err := s.userRepo.FindUsersWithPagination(req.Page, req.Limit, req.Search, req.Role, req.IsActive)
+	if err != nil {
+		return nil, err
+	}
+
+	userListItems := make([]response.UserListItem, len(users))
+	for i, user := range users {
+		userListItems[i] = response.UserListItem{
+			ID:        user.ID,
+			UUID:      user.UUID.String(),
+			Name:      user.Name,
+			Email:     user.Email,
+			Phone:     user.Phone,
+			Role:      user.Role,
+			IsActive:  user.IsActive,
+			CreatedAt: user.CreatedAt,
+		}
+	}
+
+	totalPages := int((total + int64(req.Limit) - 1) / int64(req.Limit))
+
+	return &response.UserListResponse{
+		Data: userListItems,
+		Pagination: response.PaginationResponse{
+			TotalPages: totalPages,
+			Total:      total,
+			Page:       req.Page,
+			Limit:      req.Limit,
+		},
 	}, nil
 }

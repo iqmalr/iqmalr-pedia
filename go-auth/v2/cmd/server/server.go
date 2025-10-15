@@ -17,8 +17,10 @@ func main() {
 	userRepo := repositories.NewUserRepository(database.GetDB())
 
 	authService := services.NewAuthService(userRepo)
+	userService := services.NewUserService(userRepo)
 
 	authHandler := handlers.NewAuthHandler(authService)
+	userHandler := handlers.NewUserHandler(userService)
 
 	router := gin.Default()
 
@@ -43,7 +45,22 @@ func main() {
 			auth.POST("/resend-verification", authHandler.ResendVerification)
 			auth.GET("/me", middleware.AuthMiddleware(), authHandler.GetProfile)
 		}
+		users := v2.Group("/users")
+		users.Use(middleware.AuthMiddleware())
+		{
+			users.GET("/me", userHandler.GetProfile)
+			users.PUT("/me", userHandler.UpdateProfile)
+			users.PUT("/me/password", userHandler.ChangePassword)
 
+			admin := users.Group("/")
+			admin.Use(middleware.RoleMiddleware("admin"))
+			{
+				admin.GET("/", userHandler.ListUsers)
+				admin.GET("/:id", userHandler.GetUserByID)
+				admin.PUT("/:id", userHandler.UpdateUser)
+				admin.DELETE("/:id", userHandler.DeactivateUser)
+			}
+		}
 		admin := v2.Group("/admin")
 		admin.Use(middleware.AuthMiddleware(), middleware.RoleMiddleware("admin"))
 		{

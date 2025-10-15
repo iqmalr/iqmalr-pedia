@@ -42,6 +42,7 @@ func ConnectDB() {
 		&models.User{},
 		&models.PasswordResetToken{},
 		&models.EmailVerificationToken{},
+		&models.UserAddress{},
 	)
 	if err != nil {
 		log.Fatal("Failed to migrate database: ", err)

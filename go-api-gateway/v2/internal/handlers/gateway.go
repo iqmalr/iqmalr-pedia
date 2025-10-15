@@ -106,3 +106,25 @@ func (h *GatewayHandler) ServiceDiscovery(c *gin.Context) {
 		"services": services,
 	})
 }
+func (h *GatewayHandler) UserProxyV2(c *gin.Context) {
+	path := c.Param("path")
+	targetURL := config.AppConfig.AuthServiceURL + "/api/v2/users" + path
+
+	req, err := utils.CreateProxyRequest(c, targetURL)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create proxy request"})
+		return
+	}
+
+	resp, err := h.httpClient.Do(req)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "Service unavailable"})
+		return
+	}
+	defer resp.Body.Close()
+
+	if err := utils.CopyResponse(c.Writer, resp); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to copy response"})
+		return
+	}
+}

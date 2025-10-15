@@ -31,9 +31,31 @@ func SetupRoutes(
 
 			auth := v2.Group("/auth")
 			{
-				auth.Any("/*path", gatewayHandler.AuthProxyV2)
+				auth.POST("/register", gatewayHandler.AuthProxyV2)
+				auth.POST("/login", gatewayHandler.AuthProxyV2)
+				auth.POST("/refresh", gatewayHandler.AuthProxyV2)
+				auth.POST("/forgot-password", gatewayHandler.AuthProxyV2)
+				auth.POST("/reset-password", gatewayHandler.AuthProxyV2)
+				auth.POST("/verify-email", gatewayHandler.AuthProxyV2)
+				auth.POST("/resend-verification", gatewayHandler.AuthProxyV2)
+				authGroup := auth.Group("/")
+				authGroup.Use(middleware.AuthMiddleware())
+				{
+					authGroup.POST("/logout", gatewayHandler.AuthProxyV2)
+					authGroup.GET("/me", gatewayHandler.AuthProxyV2)
+				}
 			}
+			users := v2.Group("/users")
+			users.Use(middleware.AuthMiddleware())
+			{
+				users.Any("/me/*path", gatewayHandler.UserProxyV2)
 
+				admin := users.Group("/")
+				admin.Use(middleware.RoleMiddleware("admin"))
+				{
+					admin.Any("/*path", gatewayHandler.UserProxyV2)
+				}
+			}
 			services := v2.Group("/services")
 			{
 				services.Any("/:service/*path", gatewayHandler.ProxyRequest)

@@ -15,12 +15,15 @@ func main() {
 	database.ConnectDB()
 
 	userRepo := repositories.NewUserRepository(database.GetDB())
+	addressRepo := repositories.NewAddressRepository(database.GetDB())
 
 	authService := services.NewAuthService(userRepo)
 	userService := services.NewUserService(userRepo)
+	addressService := services.NewAddressService(addressRepo)
 
 	authHandler := handlers.NewAuthHandler(authService)
 	userHandler := handlers.NewUserHandler(userService)
+	addressHandler := handlers.NewAddressHandler(addressService)
 
 	router := gin.Default()
 
@@ -37,32 +40,49 @@ func main() {
 		{
 			auth.POST("/register", authHandler.Register)
 			auth.POST("/login", authHandler.Login)
-			auth.POST("/logout", middleware.AuthMiddleware(), authHandler.Logout)
 			auth.POST("/refresh", authHandler.Refresh)
 			auth.POST("/forgot-password", authHandler.ForgotPassword)
 			auth.POST("/reset-password", authHandler.ResetPassword)
 			auth.POST("/verify-email", authHandler.VerifyEmail)
 			auth.POST("/resend-verification", authHandler.ResendVerification)
-			auth.GET("/me", middleware.AuthMiddleware(), authHandler.GetProfile)
+
+			authGroup := auth.Group("/")
+			authGroup.Use(middleware.GatewayAuthMiddleware())
+			{
+				authGroup.POST("/logout", authHandler.Logout)
+				authGroup.GET("/me", authHandler.GetProfile)
+			}
 		}
+
 		users := v2.Group("/users")
-		users.Use(middleware.AuthMiddleware())
+		users.Use(middleware.GatewayAuthMiddleware()) // GANTI
 		{
 			users.GET("/me", userHandler.GetProfile)
 			users.PUT("/me", userHandler.UpdateProfile)
 			users.PUT("/me/password", userHandler.ChangePassword)
 
 			admin := users.Group("/")
-			admin.Use(middleware.RoleMiddleware("admin"))
+			admin.Use(middleware.RoleMiddleware("admin")) // RoleMiddleware ini masih bisa dipakai di service
 			{
 				admin.GET("/", userHandler.ListUsers)
 				admin.GET("/:id", userHandler.GetUserByID)
 				admin.PUT("/:id", userHandler.UpdateUser)
 				admin.DELETE("/:id", userHandler.DeactivateUser)
 			}
+
+			addresses := users.Group("/me/addresses")
+			{
+				addresses.GET("/", addressHandler.GetAddresses)
+				addresses.POST("/", addressHandler.CreateAddress)
+				addresses.GET("/:id", addressHandler.GetAddressByID)
+				addresses.PUT("/:id", addressHandler.UpdateAddress)
+				addresses.DELETE("/:id", addressHandler.DeleteAddress)
+				addresses.PUT("/:id/default", addressHandler.SetDefaultAddress)
+			}
 		}
+
 		admin := v2.Group("/admin")
-		admin.Use(middleware.AuthMiddleware(), middleware.RoleMiddleware("admin"))
+		admin.Use(middleware.GatewayAuthMiddleware(), middleware.RoleMiddleware("admin"))
 		{
 			admin.GET("/dashboard", func(c *gin.Context) {
 				c.JSON(200, gin.H{"message": "Welcome to admin dashboard"})
@@ -70,7 +90,7 @@ func main() {
 		}
 
 		vendor := v2.Group("/vendor")
-		vendor.Use(middleware.AuthMiddleware(), middleware.RoleMiddleware("vendor", "admin"))
+		vendor.Use(middleware.GatewayAuthMiddleware(), middleware.RoleMiddleware("vendor", "admin"))
 		{
 			vendor.GET("/dashboard", func(c *gin.Context) {
 				c.JSON(200, gin.H{"message": "Welcome to vendor dashboard"})

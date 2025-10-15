@@ -12,10 +12,8 @@ import (
 )
 
 func main() {
-	// Load configuration
 	config.LoadConfig()
 
-	// Initialize Redis for rate limiting
 	var redisClient *cache.RedisClient
 	var err error
 
@@ -23,29 +21,23 @@ func main() {
 		redisClient, err = cache.NewRedisClient(config.AppConfig.RedisURL)
 		if err != nil {
 			log.Printf("Failed to connect to Redis: %v", err)
-			// Continue without Redis (rate limiting will use in-memory)
 		} else {
 			log.Println("Connected to Redis successfully")
 		}
 	}
 
-	// Set Gin mode
 	if config.AppConfig.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	// Create router
 	router := gin.Default()
 
-	// Initialize handlers
 	gatewayHandler := handlers.NewGatewayHandler()
 	healthHandler := handlers.NewHealthHandler(redisClient)
 	rateLimiter := middleware.NewRateLimiter(redisClient)
 
-	// Setup routes
 	routes.SetupRoutes(router, gatewayHandler, healthHandler, rateLimiter)
 
-	// Start server
 	log.Printf("API Gateway v2 starting on port %s", config.AppConfig.Port)
 	log.Printf("Environment: %s", config.AppConfig.Environment)
 	log.Printf("Auth Service v2: %s", config.AppConfig.AuthServiceURL)

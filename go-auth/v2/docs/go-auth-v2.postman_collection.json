@@ -1,0 +1,395 @@
+{
+  "info": {
+    "name": "go-auth v2 API",
+    "description": "Postman collection for go-auth service v2. Covers health, auth, and role-based endpoints. Use the collection variables to set base URL and tokens.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "2.0.0"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8082" },
+    { "key": "apiPrefix", "value": "/api/v2" },
+    { "key": "access_token_customer", "value": "" },
+    { "key": "access_token_vendor", "value": "" },
+    { "key": "access_token_admin", "value": "" },
+    { "key": "refresh_token", "value": "" },
+    { "key": "reset_token", "value": "" },
+    { "key": "verify_token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "const json = pm.response.json();",
+                  "pm.test('Field status = OK', () => json.status === 'OK');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST /auth/register",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "auth", "register"],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john.doe+1@example.com\",\n  \"phone\": \"+6281234567890\",\n  \"password\": \"StrongPass123\",\n  \"role\": \"customer\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.code === 201);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property('message');",
+                  "pm.expect(json).to.have.property('user');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/login",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe+1@example.com\",\n  \"password\": \"StrongPass123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property('token');",
+                  "pm.collectionVariables.set('access_token_customer', json.token || '');",
+                  "if (json.user && json.user.role === 'vendor') { pm.collectionVariables.set('access_token_vendor', json.token || ''); }",
+                  "if (json.user && json.user.role === 'admin') { pm.collectionVariables.set('access_token_admin', json.token || ''); }",
+                  "// Note: refresh token is stored in DB server-side; not returned in response"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token_customer}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "auth", "logout"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "pm.test('Message ok', () => pm.response.json().message === 'Logout successful');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/refresh (Authorization: Bearer <refresh_token>)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{refresh_token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "auth", "refresh"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property('token');",
+                  "pm.collectionVariables.set('access_token_customer', json.token || '');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/forgot-password",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/auth/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "auth", "forgot-password"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe+1@example.com\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "pm.test('Message set', () => pm.response.json().message === 'Password reset link sent to your email');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/reset-password",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/auth/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "auth", "reset-password"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{reset_token}}\",\n  \"password\": \"NewStrongPass123\",\n  \"password_confirmation\": \"NewStrongPass123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "pm.test('Message ok', () => pm.response.json().message === 'Password reset successful');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/verify-email",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/auth/verify-email",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "auth", "verify-email"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{verify_token}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "pm.test('Message ok', () => pm.response.json().message === 'Email verified successfully');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/resend-verification",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/auth/resend-verification",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "auth", "resend-verification"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe+1@example.com\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "pm.test('Message ok', () => pm.response.json().message === 'Verification email sent');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /auth/me",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token_customer}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "auth", "me"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property('email');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "GET /admin/dashboard",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{access_token_admin}}" } ],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/admin/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "admin", "dashboard"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "pm.test('Message ok', () => pm.response.json().message === 'Welcome to admin dashboard');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Vendor",
+      "item": [
+        {
+          "name": "GET /vendor/dashboard (vendor token)",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{access_token_vendor}}" } ],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/vendor/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "vendor", "dashboard"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "pm.test('Message ok', () => pm.response.json().message === 'Welcome to vendor dashboard');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /vendor/dashboard (admin token)",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{access_token_admin}}" } ],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/vendor/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "vendor", "dashboard"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "pm.test('Message ok', () => pm.response.json().message === 'Welcome to vendor dashboard');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

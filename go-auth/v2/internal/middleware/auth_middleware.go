@@ -68,8 +68,6 @@ func RoleMiddleware(allowedRoles ...string) gin.HandlerFunc {
 	}
 }
 
-// OptionalAuthMiddleware is similar to AuthMiddleware but doesn't require authentication
-// Useful for endpoints that work for both authenticated and unauthenticated users
 func OptionalAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")

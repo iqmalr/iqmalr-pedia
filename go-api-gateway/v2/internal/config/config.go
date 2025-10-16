@@ -8,14 +8,14 @@ import (
 )
 
 type Config struct {
-	Port            string
-	AuthServiceURL  string
-	UserServiceURL  string
-	RedisURL        string
-	RateLimit       int
-	RateLimitWindow int
-	JWTSecret       string
-	Environment     string
+	Port             string
+	AuthServiceURL   string
+	VendorServiceURL string
+	RedisURL         string
+	RateLimit        int
+	RateLimitWindow  int
+	JWTSecret        string
+	Environment      string
 }
 
 var AppConfig *Config
@@ -29,14 +29,14 @@ func LoadConfig() {
 	rateLimitWindow, _ := strconv.Atoi(getEnv("RATE_LIMIT_WINDOW", "60"))
 
 	AppConfig = &Config{
-		Port:            getEnv("PORT", "8080"),
-		AuthServiceURL:  getEnv("AUTH_SERVICE_URL", "http://localhost:8082"),
-		UserServiceURL:  getEnv("USER_SERVICE_URL", "http://localhost:8083"),
-		RedisURL:        getEnv("REDIS_URL", "redis://localhost:6379"),
-		RateLimit:       rateLimit,
-		RateLimitWindow: rateLimitWindow,
-		JWTSecret:       getEnv("JWT_SECRET", "your-api-gateway-secret"),
-		Environment:     getEnv("ENVIRONMENT", "development"),
+		Port:             getEnv("PORT", "8080"),
+		AuthServiceURL:   getEnv("AUTH_SERVICE_URL", "http://localhost:8082"),
+		VendorServiceURL: getEnv("VENDOR_SERVICE_URL", "http://localhost:8083"),
+		RedisURL:         getEnv("REDIS_URL", "redis://localhost:6379"),
+		RateLimit:        rateLimit,
+		RateLimitWindow:  rateLimitWindow,
+		JWTSecret:        getEnv("JWT_SECRET", "your-api-gateway-secret"),
+		Environment:      getEnv("ENVIRONMENT", "development"),
 	}
 }
 

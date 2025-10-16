@@ -60,6 +60,11 @@ func SetupRoutes(
 			{
 				services.Any("/:service/*path", gatewayHandler.ProxyRequest)
 			}
+			vendors := v2.Group("/vendors")
+			vendors.Use(middleware.AuthMiddleware())
+			{
+				vendors.Any("/*path", gatewayHandler.VendorProxyV1)
+			}
 		}
 
 		v1 := api.Group("/v1")

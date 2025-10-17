@@ -90,16 +90,39 @@ func (h *GatewayHandler) getServiceURL(service, path string) string {
 	case "auth":
 		return config.AppConfig.AuthServiceURL + "/api/v2" + path
 	case "user":
-		return config.AppConfig.UserServiceURL + "/api/v1" + path
+		return config.AppConfig.VendorServiceURL + "/api/v1" + path
 	default:
 		return ""
+	}
+}
+
+func (h *GatewayHandler) VendorProxyV1(c *gin.Context) {
+	path := c.Param("path")
+	targetURL := config.AppConfig.VendorServiceURL + "/api/v1" + path
+
+	req, err := utils.CreateProxyRequest(c, targetURL)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create proxy request"})
+		return
+	}
+
+	resp, err := h.httpClient.Do(req)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "Vendor service unavailable"})
+		return
+	}
+	defer resp.Body.Close()
+
+	if err := utils.CopyResponse(c.Writer, resp); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to copy response"})
+		return
 	}
 }
 
 func (h *GatewayHandler) ServiceDiscovery(c *gin.Context) {
 	services := map[string]string{
 		"auth-v2": config.AppConfig.AuthServiceURL,
-		"user-v1": config.AppConfig.UserServiceURL,
+		"user-v1": config.AppConfig.VendorServiceURL,
 	}
 
 	c.JSON(http.StatusOK, gin.H{

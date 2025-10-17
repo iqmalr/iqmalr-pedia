@@ -16,7 +16,6 @@ func NewAddressRepository(db *gorm.DB) *AddressRepository {
 }
 
 func (r *AddressRepository) Create(address *models.UserAddress) error {
-	// Jika alamat baru ditandai sebagai default, set alamat default lainnya menjadi false
 	if address.IsDefault {
 		if err := r.db.Model(&models.UserAddress{}).Where("user_id = ?", address.UserID).Update("is_default", false).Error; err != nil {
 			return err
@@ -36,7 +35,7 @@ func (r *AddressRepository) FindByIDAndUserID(id, userID uint) (*models.UserAddr
 	err := r.db.Where("id = ? AND user_id = ?", id, userID).First(&address).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil // Tidak ditemukan, bukan error
+			return nil, nil
 		}
 		return nil, err
 	}

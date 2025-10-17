@@ -24,6 +24,7 @@ func main() {
 	authHandler := handlers.NewAuthHandler(authService)
 	userHandler := handlers.NewUserHandler(userService)
 	addressHandler := handlers.NewAddressHandler(addressService)
+	internalHandler := handlers.NewInternalHandler(userRepo)
 
 	router := gin.Default()
 
@@ -55,14 +56,14 @@ func main() {
 		}
 
 		users := v2.Group("/users")
-		users.Use(middleware.GatewayAuthMiddleware()) // GANTI
+		users.Use(middleware.GatewayAuthMiddleware())
 		{
 			users.GET("/me", userHandler.GetProfile)
 			users.PUT("/me", userHandler.UpdateProfile)
 			users.PUT("/me/password", userHandler.ChangePassword)
 
 			admin := users.Group("/")
-			admin.Use(middleware.RoleMiddleware("admin")) // RoleMiddleware ini masih bisa dipakai di service
+			admin.Use(middleware.RoleMiddleware("admin"))
 			{
 				admin.GET("/", userHandler.ListUsers)
 				admin.GET("/:id", userHandler.GetUserByID)
@@ -95,6 +96,12 @@ func main() {
 			vendor.GET("/dashboard", func(c *gin.Context) {
 				c.JSON(200, gin.H{"message": "Welcome to vendor dashboard"})
 			})
+		}
+		internal := v2.Group("/internal")
+		internal.Use(middleware.InternalAuthMiddleware())
+		{
+			internal.GET("/users/by-email", internalHandler.GetUserByEmailInternal)
+			internal.GET("/users/:id", internalHandler.GetUserByIDInternal)
 		}
 	}
 

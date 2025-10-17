@@ -937,18 +937,95 @@
 - Authorization: Bearer token (any authenticated user)
 - Prioritas: High (MVP)
 
-### 2.2 Vendor User Management Endpoints
+### 2.2 Vendor Management Endpoints
 
-**Task 2.2.1: Add User to Vendor**
-- Endpoint: `POST /vendors/{id}/users`
+This section manages the entire vendor lifecycle, from registration to team management.
+
+---
+
+### **Phase 1: Vendor Registration and Approval**
+
+This phase covers the flow where a user registers a store/vendor and awaits admin approval to become an official owner.
+
+**Task 2.2.1: Apply to Become a Vendor**
+- Endpoint: `POST /vendor-applications`
+- HTTP Method: POST
+- Path Params: None
+- Request Body:
+  ```json
+  {
+    "name": "string",
+    "description": "string",
+    "contact_email": "string",
+    "contact_phone": "string",
+    "business_type": "string",
+    "tax_id": "string",
+    "address_line1": "string",
+    "address_line2": "string",
+    "city": "string",
+    "state": "string",
+    "postal_code": "string",
+    "country": "string"
+  }
+  ```
+- Response Format (201):
+  ```json
+  {
+    "id": "integer",
+    "uuid": "string",
+    "name": "string",
+    "slug": "string",
+    "status": "pending",
+    "created_at": "timestamp"
+  }
+  ```
+- Validasi:
+    - name: required, min 3 characters
+    - contact_email: required, valid email format
+    - (other validations same as Create Vendor task)
+- Authorization: Bearer token (any authenticated user, typically with 'customer' role)
+- Prioritas: High (MVP)
+- Notes: This endpoint creates a new record in the `vendors` table with `status: 'pending'`. A record in the `vendor_users` table is **not created** at this stage. The applying user is the prospective `owner`.
+
+**Task 2.2.2: Approve/Reject Vendor Application (Admin Only)**
+- Endpoint: `PUT /vendor-applications/{id}/approve` and `PUT /vendor-applications/{id}/reject`
+- HTTP Method: PUT
+- Path Params: id (integer)
+- Request Body (Optional, for reject):
+  ```json
+  {
+    "reason": "string"
+  }
+  ```
+- Response Format (200):
+  ```json
+  {
+    "message": "Vendor application approved successfully"
+  }
+  ```
+- Validasi:
+    - id: required, must exist in database
+- Authorization: Bearer token (admin only)
+- Prioritas: High (MVP)
+- Notes:
+    - **Approve**: Changes `vendors.status` to `active`, fills `approved_at` and `approved_by`. Then creates a record in `vendor_users` with `role: 'owner'` and `is_active: true`, linking the applying user with the newly approved vendor.
+    - **Reject**: Changes `vendors.status` to 'rejected'.
+
+---
+
+### **Phase 2: Vendor Team Management**
+
+This phase applies after vendor approval. The owner or vendor admin can manage their team members. This flow typically involves invitations.
+
+**Task 2.2.3: Invite User to Vendor**
+- Endpoint: `POST /vendors/{id}/invitations`
 - HTTP Method: POST
 - Path Params: id (integer)
 - Request Body:
   ```json
   {
-    "user_id": "integer",
-    "role": "string",
-    "permissions": "object"
+    "email": "string",
+    "role": "string"
   }
   ```
 - Response Format (201):
@@ -958,22 +1035,37 @@
     "vendor_id": "integer",
     "user_id": "integer",
     "role": "string",
-    "permissions": "object",
     "is_active": "boolean",
     "invited_at": "timestamp",
-    "created_at": "timestamp",
-    "updated_at": "timestamp"
+    "created_at": "timestamp"
   }
   ```
 - Validasi:
     - id: required, must exist and belong to current user or admin
-    - user_id: required, must exist in database
-    - role: required, must be one of 'owner', 'admin', 'staff'
-    - permissions: optional, JSON object
+    - email: required, must exist in database
+    - role: required, must be one of 'admin', 'staff'
 - Authorization: Bearer token (vendor owner or admin)
 - Prioritas: Medium
+- Notes: Finds user by email, then creates a record in `vendor_users` with `is_active: false` and sends invitation email to target user.
 
-**Task 2.2.2: Get Vendor Users**
+**Task 2.2.4: Accept Vendor Invitation**
+- Endpoint: `POST /invitations/{token}/accept`
+- HTTP Method: POST
+- Path Params: token (string, from email link)
+- Request Body: None
+- Response Format (200):
+  ```json
+  {
+    "message": "Invitation accepted successfully"
+  }
+  ```
+- Validasi:
+    - token: required, must exist and be valid (not expired)
+- Authorization: None (token in URL serves as authorization)
+- Prioritas: Medium
+- Notes: Changes `is_active` to `true` and fills `joined_at` on the corresponding `vendor_users` record.
+
+**Task 2.2.5: Get Vendor Users**
 - Endpoint: `GET /vendors/{id}/users`
 - HTTP Method: GET
 - Path Params: id (integer)
@@ -989,7 +1081,8 @@
         "user": {
           "id": "integer",
           "name": "string",
-          "email": "string"
+          "email": "string",
+          "avatar_url": "string"
         },
         "role": "string",
         "permissions": "object",
@@ -1005,8 +1098,9 @@
     - id: required, must exist and belong to current user or admin
 - Authorization: Bearer token (vendor owner, admin, or vendor users)
 - Prioritas: Medium
+- Notes: Query must perform `JOIN` with `users` table to get user details (name, email, avatar).
 
-**Task 2.2.3: Update Vendor User Role**
+**Task 2.2.6: Update Vendor User Role**
 - Endpoint: `PUT /vendors/{vendorId}/users/{userId}`
 - HTTP Method: PUT
 - Path Params:
@@ -1038,13 +1132,17 @@
 - Validasi:
     - vendorId: required, must exist and belong to current user or admin
     - userId: required, must exist and be associated with the vendor
-    - role: optional, must be one of 'owner', 'admin', 'staff'
+    - role: optional, must be one of 'admin', 'staff'
     - permissions: optional, JSON object
     - is_active: optional, boolean
-- Authorization: Bearer token (vendor owner or admin)
+- Authorization: Bearer token (vendor owner or admin). See Authorization Logic for role hierarchy details.
 - Prioritas: Medium
+- Authorization Notes:
+    - **Owner**: Can change anyone's role (including other admins) and deactivate anyone.
+    - **Admin**: Can only change `staff` role and deactivate `staff`. Cannot change other `admin` or `owner` roles.
+- Notes: This endpoint updates the role, permissions, or active status of an existing vendor user. The vendorId and userId in the path must correspond to an existing and associated user record.
 
-**Task 2.2.4: Remove User from Vendor**
+**Task 2.2.7: Remove User from Vendor**
 - Endpoint: `DELETE /vendors/{vendorId}/users/{userId}`
 - HTTP Method: DELETE
 - Path Params:
@@ -1062,6 +1160,9 @@
     - userId: required, must exist and be associated with the vendor
 - Authorization: Bearer token (vendor owner or admin)
 - Prioritas: Medium
+- Authorization Notes:
+    - **Owner**: Can remove anyone.
+    - **Admin**: Can only remove `staff`. Cannot remove other `admin` or `owner`.
 
 ### 2.3 Vendor Settings Endpoints
 

@@ -63,9 +63,10 @@ type MessageResponse struct {
 }
 
 type UserValidationResponse struct {
-	ID    uint   `json:"id"`
-	UUID  string `json:"uuid"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
-	Role  string `json:"role"`
+	ID        uint   `json:"id"`
+	UUID      string `json:"uuid"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	Role      string `json:"role"`
+	AvatarURL string `json:"avatar_url"`
 }

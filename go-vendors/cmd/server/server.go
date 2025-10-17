@@ -23,6 +23,7 @@ func main() {
 	vendorService := services.NewVendorService(vendorRepo, httpClient)
 	vendorHandler := handlers.NewVendorHandler(vendorService)
 	applicationHandler := handlers.NewVendorApplicationHandler(vendorService)
+	teamHandler := handlers.NewVendorTeamHandler(vendorService)
 
 	router := gin.Default()
 
@@ -50,6 +51,11 @@ func main() {
 		v1.PUT("/vendors/:id", vendorHandler.UpdateVendor)
 		v1.POST("/vendors/:id/logo", vendorHandler.UploadLogo)
 		v1.POST("/vendors/:id/banner", vendorHandler.UploadBanner)
+
+		v1.POST("/vendors/:id/invitations", teamHandler.AddUserToVendor)
+		v1.GET("/vendors/:id/users", teamHandler.GetVendorUsers)
+		v1.PUT("/vendors/:id/users/:userId", teamHandler.UpdateVendorUser)
+		v1.DELETE("/vendors/:id/users/:userId", teamHandler.RemoveVendorUser)
 
 		// Admin only
 		admin := v1.Group("/admin")

@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/iqmalr-pedia/go-vendors/internal/config"
@@ -88,12 +89,41 @@ func (s *VendorService) CreateVendor(userID uint, req *request.CreateVendorReque
 		return nil, err
 	}
 
-	if err := s.vendorRepo.AddUserToVendor(vendor.ID, userID, "owner"); err != nil {
+	if _, err := s.vendorRepo.AddUserToVendor(vendor.ID, userID, userID, "owner"); err != nil {
 		// TODO: Handle rollback (delete vendor if adding user fails)
 		return nil, err
 	}
 
 	return s.mapToVendorResponse(vendor), nil
+}
+func (s *VendorService) AddUserToVendor(vendorID, currentUserID uint, req *request.AddUserToVendorRequest) (*response.VendorUserResponse, error) {
+	vendor, err := s.vendorRepo.FindByID(vendorID)
+	if err != nil {
+		return nil, errors.New("vendor not found")
+	}
+	isOwner := vendor.OwnerID == currentUserID
+	if !isOwner {
+		return nil, errors.New("unauthorized: only the vendor owner can add users")
+	}
+	targetUser, err := s.validateUserWithAuthService(req.Email)
+	if err != nil {
+		return nil, errors.New("user with that email not found")
+	}
+
+	isPartOf, err := s.vendorRepo.IsUserPartOfVendor(vendorID, targetUser.ID)
+	if err != nil {
+		return nil, err
+	}
+	if isPartOf {
+		return nil, errors.New("user is already a member of this vendor")
+	}
+
+	vendorUser, err := s.vendorRepo.AddUserToVendor(vendorID, targetUser.ID, currentUserID, req.Role)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.mapToVendorUserResponse(vendorUser), nil
 }
 
 func (s *VendorService) GetVendorByID(id uint) (*response.VendorResponse, error) {
@@ -307,11 +337,13 @@ func (s *VendorService) ApproveApplication(vendorID, adminID uint) (*response.Me
 }
 
 func (s *VendorService) RejectApplication(vendorID uint, reason string) (*response.MessageResponse, error) {
+	log.Printf("Rejecting vendor application %d with reason: %s", vendorID, reason)
+
 	if err := s.vendorRepo.RejectApplication(vendorID); err != nil {
 		return nil, err
 	}
-	// TODO: Kirim notifikasi ke user tentang alasan penolakan
-	return &response.MessageResponse{Message: "Vendor application rejected"}, nil
+
+	return &response.MessageResponse{Message: fmt.Sprintf("Vendor application rejected. Reason: %s", reason)}, nil
 }
 
 func (s *VendorService) mapToApplicationResponse(vendor *models.Vendor) *response.ApplicationResponse {
@@ -323,4 +355,169 @@ func (s *VendorService) mapToApplicationResponse(vendor *models.Vendor) *respons
 		Status:    vendor.Status,
 		CreatedAt: vendor.CreatedAt,
 	}
+}
+
+func (s *VendorService) GetVendorUsers(vendorID uint) (*response.VendorUserListResponse, error) {
+	vendorUsers, err := s.vendorRepo.FindUsersByVendorID(vendorID)
+	if err != nil {
+		return nil, err
+	}
+
+	userList := make([]response.VendorUserResponse, len(vendorUsers))
+	for i, vu := range vendorUsers {
+		user, err := s.getUserByIDFromAuthService(vu.UserID)
+		if err != nil {
+			user = &response.UserValidationResponse{
+				ID:        vu.UserID,
+				Name:      "Unknown User",
+				Email:     "unknown@example.com",
+				AvatarURL: "",
+			}
+		}
+
+		userList[i] = response.VendorUserResponse{
+			ID:       vu.ID,
+			VendorID: vu.VendorID,
+			UserID:   vu.UserID,
+			User: response.UserResponse{
+				ID:        user.ID,
+				Name:      user.Name,
+				Email:     user.Email,
+				AvatarURL: user.AvatarURL,
+			},
+			Role:      vu.Role,
+			IsActive:  vu.IsActive,
+			InvitedAt: vu.InvitedAt,
+			JoinedAt:  vu.JoinedAt,
+		}
+	}
+
+	return &response.VendorUserListResponse{Data: userList}, nil
+}
+
+func (s *VendorService) UpdateVendorUser(vendorID, userID, currentUserID uint, currentUserRole string, req *request.UpdateVendorUserRequest) (*response.VendorUserResponse, error) {
+	vendor, err := s.vendorRepo.FindByID(vendorID)
+	if err != nil {
+		return nil, errors.New("vendor not found")
+	}
+
+	vendorUser, err := s.vendorRepo.FindVendorUser(vendorID, userID)
+	if err != nil {
+		return nil, errors.New("vendor user not found")
+	}
+
+	isOwner := vendor.OwnerID == currentUserID
+	isTargetOwner := vendorUser.Role == "owner"
+
+	if isTargetOwner && !isOwner {
+		return nil, errors.New("unauthorized: only the vendor owner can modify another owner")
+	}
+
+	if currentUserRole == "admin" && (vendorUser.Role == "admin" || isTargetOwner) {
+		return nil, errors.New("unauthorized: admins cannot modify other admins or the owner")
+	}
+
+	if currentUserRole == "staff" {
+		return nil, errors.New("unauthorized: staff cannot modify other users")
+	}
+
+	if req.Role != "" {
+		vendorUser.Role = req.Role
+	}
+	if req.IsActive != nil {
+		vendorUser.IsActive = *req.IsActive
+	}
+	// TODO: Update permissions jika ada
+
+	if err := s.vendorRepo.UpdateVendorUser(vendorUser); err != nil {
+		return nil, err
+	}
+
+	return s.mapToVendorUserResponse(vendorUser), nil
+}
+
+func (s *VendorService) RemoveVendorUser(vendorID, userID, currentUserID uint, currentUserRole string) (*response.MessageResponse, error) {
+	vendor, err := s.vendorRepo.FindByID(vendorID)
+	if err != nil {
+		return nil, errors.New("vendor not found")
+	}
+
+	vendorUser, err := s.vendorRepo.FindVendorUser(vendorID, userID)
+	if err != nil {
+		return nil, errors.New("vendor user not found")
+	}
+
+	isOwner := vendor.OwnerID == currentUserID
+	isTargetOwner := vendorUser.Role == "owner"
+
+	if isTargetOwner && userID == currentUserID {
+		return nil, errors.New("forbidden: you cannot remove yourself as the owner")
+	}
+
+	if (isTargetOwner || vendorUser.Role == "admin") && !isOwner {
+		return nil, errors.New("unauthorized: only the vendor owner can remove an admin or another owner")
+	}
+
+	if currentUserRole == "admin" && vendorUser.Role != "staff" {
+		return nil, errors.New("unauthorized: admins can only remove staff members")
+	}
+
+	if currentUserRole == "staff" {
+		return nil, errors.New("unauthorized: staff cannot remove other users")
+	}
+
+	if err := s.vendorRepo.RemoveVendorUser(vendorID, userID); err != nil {
+		return nil, err
+	}
+
+	return &response.MessageResponse{Message: "User removed from vendor successfully"}, nil
+}
+
+func (s *VendorService) mapToVendorUserResponse(vu *models.VendorUser) *response.VendorUserResponse {
+	user, err := s.getUserByIDFromAuthService(vu.UserID)
+	if err != nil {
+		user = &response.UserValidationResponse{
+			ID:        vu.UserID,
+			Name:      "Unknown User",
+			Email:     "unknown@example.com",
+			AvatarURL: "",
+		}
+	}
+
+	return &response.VendorUserResponse{
+		ID:       vu.ID,
+		VendorID: vu.VendorID,
+		UserID:   vu.UserID,
+		User: response.UserResponse{
+			ID:        user.ID,
+			Name:      user.Name,
+			Email:     user.Email,
+			AvatarURL: user.AvatarURL,
+		},
+		Role:      vu.Role,
+		IsActive:  vu.IsActive,
+		InvitedAt: vu.InvitedAt,
+		JoinedAt:  vu.JoinedAt,
+	}
+}
+
+func (s *VendorService) getUserByIDFromAuthService(userID uint) (*response.UserValidationResponse, error) {
+	url := fmt.Sprintf("%s/api/v2/internal/users/%d", config.AppConfig.AuthServiceURL, userID)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("X-Internal-API-Key", config.AppConfig.InternalAPIKey)
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("user not found")
+	}
+
+	return utils.ParseUserValidationResponse(resp)
 }

@@ -16,6 +16,7 @@ type Config struct {
 	RateLimitWindow  int
 	JWTSecret        string
 	Environment      string
+	InternalAPIKey   string
 }
 
 var AppConfig *Config
@@ -37,6 +38,7 @@ func LoadConfig() {
 		RateLimitWindow:  rateLimitWindow,
 		JWTSecret:        getEnv("JWT_SECRET", "your-api-gateway-secret"),
 		Environment:      getEnv("ENVIRONMENT", "development"),
+		InternalAPIKey:   getEnv("INTERNAL_API_KEY", "my-super-secret-key-for-services"),
 	}
 }
 

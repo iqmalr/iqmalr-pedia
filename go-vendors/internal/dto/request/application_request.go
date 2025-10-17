@@ -16,5 +16,5 @@ type CreateApplicationRequest struct {
 }
 
 type ApproveRejectRequest struct {
-	Reason string `json:"reason"`
+	Reason string `json:"reason" binding:"required"`
 }

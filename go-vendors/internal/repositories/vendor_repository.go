@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"time"
+
 	"github.com/iqmalr-pedia/go-vendors/internal/models"
 	"gorm.io/gorm"
 )
@@ -15,6 +17,8 @@ type VendorRepositoryInterface interface {
 	FindWithPagination(page, limit int, search, status, sort, order string) ([]models.Vendor, int64, error)
 	AddUserToVendor(vendorID, userID uint, role string) error
 	IsUserPartOfVendor(vendorID, userID uint) (bool, error)
+	ApproveApplication(vendorID, ownerID, approvedBy uint) error
+	RejectApplication(vendorID uint) error
 }
 
 type VendorRepository struct {
@@ -97,4 +101,33 @@ func (r *VendorRepository) IsUserPartOfVendor(vendorID, userID uint) (bool, erro
 	var count int64
 	err := r.db.Model(&models.VendorUser{}).Where("vendor_id = ? AND user_id = ? AND is_active = ?", vendorID, userID, true).Count(&count).Error
 	return count > 0, err
+}
+
+func (r *VendorRepository) ApproveApplication(vendorID, ownerID, approvedBy uint) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.Vendor{}).Where("id = ?", vendorID).Updates(map[string]interface{}{
+			"status":      "active",
+			"approved_at": time.Now(),
+			"approved_by": approvedBy,
+		}).Error; err != nil {
+			return err
+		}
+
+		vendorUser := &models.VendorUser{
+			VendorID: vendorID,
+			UserID:   ownerID,
+			Role:     "owner",
+			IsActive: true,
+			JoinedAt: &[]time.Time{time.Now()}[0],
+		}
+		if err := tx.Create(vendorUser).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+func (r *VendorRepository) RejectApplication(vendorID uint) error {
+	return r.db.Model(&models.Vendor{}).Where("id = ?", vendorID).Update("status", "rejected").Error
 }

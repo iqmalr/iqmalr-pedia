@@ -243,3 +243,84 @@ func (s *VendorService) mapToVendorResponse(vendor *models.Vendor) *response.Ven
 		UpdatedAt:     vendor.UpdatedAt,
 	}
 }
+func (s *VendorService) CreateApplication(userID uint, req *request.CreateApplicationRequest) (*response.ApplicationResponse, error) {
+
+	isOwner, err := s.vendorRepo.IsUserPartOfVendor(0, userID)
+	if err == nil && isOwner {
+		return nil, errors.New("you already own an active vendor")
+	}
+
+	pendingVendor, err := s.vendorRepo.FindByOwnerID(userID)
+	if err == nil && pendingVendor.Status == "pending" {
+		return nil, errors.New("you already have a pending application")
+	}
+
+	slug := utils.GenerateSlug(req.Name)
+	for {
+		_, err := s.vendorRepo.FindBySlug(slug)
+		if err != nil {
+			break
+		}
+		slug += "-1"
+	}
+
+	vendor := &models.Vendor{
+		OwnerID:      userID,
+		Name:         req.Name,
+		Slug:         slug,
+		Description:  req.Description,
+		ContactEmail: req.ContactEmail,
+		ContactPhone: req.ContactPhone,
+		BusinessType: req.BusinessType,
+		TaxID:        req.TaxID,
+		AddressLine1: req.AddressLine1,
+		AddressLine2: req.AddressLine2,
+		City:         req.City,
+		State:        req.State,
+		PostalCode:   req.PostalCode,
+		Country:      req.Country,
+		Status:       "pending",
+	}
+
+	if vendor.Country == "" {
+		vendor.Country = "Indonesia"
+	}
+
+	if err := s.vendorRepo.Create(vendor); err != nil {
+		return nil, err
+	}
+
+	return s.mapToApplicationResponse(vendor), nil
+}
+
+func (s *VendorService) ApproveApplication(vendorID, adminID uint) (*response.MessageResponse, error) {
+	vendor, err := s.vendorRepo.FindByID(vendorID)
+	if err != nil {
+		return nil, errors.New("vendor application not found")
+	}
+
+	if err := s.vendorRepo.ApproveApplication(vendorID, vendor.OwnerID, adminID); err != nil {
+		return nil, err
+	}
+
+	return &response.MessageResponse{Message: "Vendor application approved successfully"}, nil
+}
+
+func (s *VendorService) RejectApplication(vendorID uint, reason string) (*response.MessageResponse, error) {
+	if err := s.vendorRepo.RejectApplication(vendorID); err != nil {
+		return nil, err
+	}
+	// TODO: Kirim notifikasi ke user tentang alasan penolakan
+	return &response.MessageResponse{Message: "Vendor application rejected"}, nil
+}
+
+func (s *VendorService) mapToApplicationResponse(vendor *models.Vendor) *response.ApplicationResponse {
+	return &response.ApplicationResponse{
+		ID:        vendor.ID,
+		UUID:      vendor.UUID.String(),
+		Name:      vendor.Name,
+		Slug:      vendor.Slug,
+		Status:    vendor.Status,
+		CreatedAt: vendor.CreatedAt,
+	}
+}

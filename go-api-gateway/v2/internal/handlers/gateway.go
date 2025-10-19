@@ -20,8 +20,10 @@ func NewGatewayHandler() *GatewayHandler {
 }
 
 func (h *GatewayHandler) AuthProxyV2(c *gin.Context) {
-	path := c.Param("path")
-	targetURL := config.AppConfig.AuthServiceURL + "/api/v2/auth" + path
+	//path := c.Param("path")
+	originalPath := c.Request.URL.Path
+	//targetURL := config.AppConfig.AuthServiceURL + "/api/v2/auth" + path
+	targetURL := config.AppConfig.AuthServiceURL + originalPath
 
 	req, err := utils.CreateProxyRequest(c, targetURL)
 	if err != nil {

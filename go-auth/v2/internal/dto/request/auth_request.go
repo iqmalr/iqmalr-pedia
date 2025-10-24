@@ -57,4 +57,6 @@ type ListUsersRequest struct {
 	Search   string `form:"search"`
 	Role     string `form:"role" binding:"omitempty,oneof=customer vendor vendor_admin admin"`
 	IsActive *bool  `form:"is_active"`
+	SortBy   string `form:"sort_by" binding:"omitempty,oneof=name email created_at"`
+	Order    string `form:"order" binding:"omitempty,oneof=asc desc"`
 }

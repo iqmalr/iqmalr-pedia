@@ -26,6 +26,7 @@ func SetupRoutes(
 
 		v2 := api.Group("/v2")
 		{
+			v2.POST("/vendor-applications", gatewayHandler.VendorProxyV1)
 			v2.Use(rateLimiter.LimitByIP())
 			v2.Use(middleware.OptionalAuthMiddleware())
 
@@ -48,12 +49,12 @@ func SetupRoutes(
 			users := v2.Group("/users")
 			users.Use(middleware.AuthMiddleware())
 			{
-				users.Any("/me/*path", gatewayHandler.UserProxyV2)
+				//users.Any("/me/*path", gatewayHandler.UserProxyV2)
 
-				admin := users.Group("/")
+				admin := users.Group("")
 				admin.Use(middleware.RoleMiddleware("admin"))
 				{
-					admin.Any("/*path", gatewayHandler.UserProxyV2)
+					admin.Any("*path", gatewayHandler.UserProxyV2)
 				}
 			}
 			services := v2.Group("/services")
@@ -64,6 +65,17 @@ func SetupRoutes(
 			vendors.Use(middleware.AuthMiddleware())
 			{
 				vendors.Any("/*path", gatewayHandler.VendorProxyV1)
+			}
+			admin := v2.Group("/admin")
+			admin.Use(middleware.AuthMiddleware(), middleware.RoleMiddleware("admin"))
+			{
+				admin.PUT("/vendor-applications/:id/approve", gatewayHandler.VendorProxyV1)
+				admin.PUT("/vendor-applications/:id/reject", gatewayHandler.VendorProxyV1)
+			}
+			internal := v2.Group("/internal")
+			internal.Use(middleware.InternalAuthMiddleware())
+			{
+				internal.Any("/*path", gatewayHandler.AuthProxyV2)
 			}
 		}
 

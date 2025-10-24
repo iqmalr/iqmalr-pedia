@@ -20,8 +20,10 @@ func NewGatewayHandler() *GatewayHandler {
 }
 
 func (h *GatewayHandler) AuthProxyV2(c *gin.Context) {
-	path := c.Param("path")
-	targetURL := config.AppConfig.AuthServiceURL + "/api/v2/auth" + path
+	//path := c.Param("path")
+	originalPath := c.Request.URL.Path
+	//targetURL := config.AppConfig.AuthServiceURL + "/api/v2/auth" + path
+	targetURL := config.AppConfig.AuthServiceURL + originalPath
 
 	req, err := utils.CreateProxyRequest(c, targetURL)
 	if err != nil {
@@ -131,8 +133,13 @@ func (h *GatewayHandler) ServiceDiscovery(c *gin.Context) {
 }
 func (h *GatewayHandler) UserProxyV2(c *gin.Context) {
 	path := c.Param("path")
-	targetURL := config.AppConfig.AuthServiceURL + "/api/v2/users" + path
+	//targetURL := config.AppConfig.AuthServiceURL + "/api/v2/users" + path
+	baseURL := config.AppConfig.AuthServiceURL + "/api/v2/users" + path
 
+	targetURL := baseURL
+	if c.Request.URL.RawQuery != "" {
+		targetURL = baseURL + "?" + c.Request.URL.RawQuery
+	}
 	req, err := utils.CreateProxyRequest(c, targetURL)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create proxy request"})

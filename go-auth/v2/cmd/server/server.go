@@ -65,10 +65,10 @@ func main() {
 			admin := users.Group("/")
 			admin.Use(middleware.RoleMiddleware("admin"))
 			{
-				admin.GET("/", userHandler.ListUsers)
+				admin.GET("", userHandler.ListUsers)
 				admin.GET("/:id", userHandler.GetUserByID)
 				admin.PUT("/:id", userHandler.UpdateUser)
-				admin.DELETE("/:id", userHandler.DeactivateUser)
+				admin.PATCH("/:id", userHandler.UpdateUser)
 			}
 
 			addresses := users.Group("/me/addresses")

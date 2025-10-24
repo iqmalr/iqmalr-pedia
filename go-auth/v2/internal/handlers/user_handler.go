@@ -1,3 +1,4 @@
+// go-auth/v2/internal/handlers/user_handler.go
 package handlers
 
 import (
@@ -87,7 +88,7 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 		return
 	}
 
-	profile, err := h.userService.GetUserByID(uint(id))
+	profile, err := h.userService.GetAdminUserByID(uint(id))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
@@ -110,7 +111,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 		return
 	}
 
-	profile, err := h.userService.UpdateUser(uint(id), &req)
+	profile, err := h.userService.UpdateAdminUser(uint(id), &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -119,21 +120,37 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, profile)
 }
 
-func (h *UserHandler) DeactivateUser(c *gin.Context) {
-	idParam := c.Param("id")
-	id, err := strconv.ParseUint(idParam, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
-		return
-	}
-
-	if err := h.userService.DeactivateUser(uint(id)); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, response.MessageResponse{Message: "User deactivated successfully"})
-}
+//func (h *UserHandler) DeactivateUser(c *gin.Context) {
+//	idParam := c.Param("id")
+//	id, err := strconv.ParseUint(idParam, 10, 32)
+//	if err != nil {
+//		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+//		return
+//	}
+//
+//	if err := h.userService.DeactivateUser(uint(id)); err != nil {
+//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+//		return
+//	}
+//
+//	c.JSON(http.StatusOK, response.MessageResponse{Message: "User deactivated successfully"})
+//}
+//
+//func (h *UserHandler) ReactivateUser(c *gin.Context) {
+//	idParam := c.Param("id")
+//	id, err := strconv.ParseUint(idParam, 10, 32)
+//	if err != nil {
+//		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+//		return
+//	}
+//
+//	if err := h.userService.ReactivateUser(uint(id)); err != nil {
+//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+//		return
+//	}
+//
+//	c.JSON(http.StatusOK, response.MessageResponse{Message: "User reactivated successfully"})
+//}
 
 func (h *UserHandler) ListUsers(c *gin.Context) {
 	var req request.ListUsersRequest
@@ -142,7 +159,7 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 		return
 	}
 
-	users, err := h.userService.ListUsers(&req)
+	users, err := h.userService.ListAdminUsers(&req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
 		return

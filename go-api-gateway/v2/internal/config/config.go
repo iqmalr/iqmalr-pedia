@@ -38,7 +38,7 @@ func LoadConfig() {
 		RateLimitWindow:  rateLimitWindow,
 		JWTSecret:        getEnv("JWT_SECRET", "your-api-gateway-secret"),
 		Environment:      getEnv("ENVIRONMENT", "development"),
-		InternalAPIKey:   getEnv("INTERNAL_API_KEY", "my-super-secret-key-for-services"),
+		InternalAPIKey:   getEnv("INTERNAL_API_KEY", "sangat-rahasia-juga-untuk-internal"),
 	}
 }
 

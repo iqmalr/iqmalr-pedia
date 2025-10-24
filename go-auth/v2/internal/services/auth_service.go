@@ -1,3 +1,4 @@
+// go-auth/v2/internal/services/auth_service.go
 package services
 
 import (
@@ -73,16 +74,7 @@ func (s *AuthService) Register(req *request.RegisterRequest) (*response.Register
 
 	return &response.RegisterResponse{
 		Message: "User registered successfully. Please check your email for verification.",
-		User: &response.UserResponse{
-			ID:        user.ID,
-			UUID:      user.UUID.String(),
-			Name:      user.Name,
-			Email:     user.Email,
-			Phone:     user.Phone,
-			Role:      user.Role,
-			IsActive:  user.IsActive,
-			CreatedAt: user.CreatedAt,
-		},
+		UUID:    user.UUID.String(),
 	}, nil
 }
 
@@ -124,14 +116,7 @@ func (s *AuthService) Login(req *request.LoginRequest) (*response.LoginResponse,
 	return &response.LoginResponse{
 		Message: "Login successful",
 		Token:   token,
-		User: &response.LoginUser{
-			ID:       user.ID,
-			UUID:     user.UUID.String(),
-			Name:     user.Name,
-			Email:    user.Email,
-			Role:     user.Role,
-			IsActive: user.IsActive,
-		},
+		Role:    user.Role,
 	}, nil
 }
 
@@ -159,7 +144,9 @@ func (s *AuthService) RefreshToken(refreshToken string) (*response.RefreshTokenR
 	if user.RefreshToken != refreshToken {
 		return nil, errors.New("invalid refresh token")
 	}
-
+	if !user.IsActive {
+		return nil, errors.New("Your account has been deactivated. Please contact the administrator to reactivate your account.")
+	}
 	token, err := utils.GenerateToken(user.ID, user.UUID.String(), user.Email, user.Role)
 	if err != nil {
 		return nil, err
@@ -300,6 +287,7 @@ func (s *AuthService) GetUserProfile(userID uint) (*response.UserProfileResponse
 		CreatedAt:       user.CreatedAt,
 	}, nil
 }
+
 func (s *UserService) GetProfile(userID uint) (*response.UserProfileResponse, error) {
 	user, err := s.userRepo.FindUserByID(userID)
 	if err != nil {
@@ -364,14 +352,15 @@ func (s *UserService) ChangePassword(userID uint, req *request.ChangePasswordReq
 	return s.userRepo.ChangePassword(userID, hashedPassword)
 }
 
-func (s *UserService) GetUserByID(id uint) (*response.UserProfileResponse, error) {
+func (s *UserService) GetAdminUserByID(id uint) (*response.AdminUserResponse, error) {
 	user, err := s.userRepo.FindUserByID(id)
 	if err != nil {
 		return nil, err
 	}
-	return &response.UserProfileResponse{
+	return &response.AdminUserResponse{
 		ID:              user.ID,
 		UUID:            user.UUID.String(),
+		Name:            user.Name,
 		Email:           user.Email,
 		Phone:           user.Phone,
 		Role:            user.Role,
@@ -385,7 +374,7 @@ func (s *UserService) GetUserByID(id uint) (*response.UserProfileResponse, error
 	}, nil
 }
 
-func (s *UserService) UpdateUser(id uint, req *request.UpdateUserRequest) (*response.UserProfileResponse, error) {
+func (s *UserService) UpdateAdminUser(id uint, req *request.UpdateUserRequest) (*response.AdminUserResponse, error) {
 	user, err := s.userRepo.FindUserByID(id)
 	if err != nil {
 		return nil, errors.New("user not found")
@@ -419,39 +408,38 @@ func (s *UserService) UpdateUser(id uint, req *request.UpdateUserRequest) (*resp
 		return nil, err
 	}
 
-	return s.GetUserByID(id)
+	return s.GetAdminUserByID(id)
 }
 
-func (s *UserService) DeactivateUser(id uint) error {
-	if err := s.userRepo.DeactivateUser(id); err != nil {
-		return errors.New("failed to deactivate user")
-	}
-	return nil
-}
-
-func (s *UserService) ListUsers(req *request.ListUsersRequest) (*response.UserListResponse, error) {
-	users, total, err := s.userRepo.FindUsersWithPagination(req.Page, req.Limit, req.Search, req.Role, req.IsActive)
+func (s *UserService) ListAdminUsers(req *request.ListUsersRequest) (*response.AdminUserListResponse, error) {
+	//users, total, err := s.userRepo.FindUsersWithPagination(req.Page, req.Limit, req.Search, req.Role, req.IsActive)
+	users, total, err := s.userRepo.FindUsersWithPagination(req.Page, req.Limit, req.Search, req.Role, req.IsActive, req.SortBy, req.Order)
 	if err != nil {
 		return nil, err
 	}
 
-	userListItems := make([]response.UserListItem, len(users))
+	userListItems := make([]response.AdminUserListItem, len(users))
 	for i, user := range users {
-		userListItems[i] = response.UserListItem{
-			ID:        user.ID,
-			UUID:      user.UUID.String(),
-			Name:      user.Name,
-			Email:     user.Email,
-			Phone:     user.Phone,
-			Role:      user.Role,
-			IsActive:  user.IsActive,
-			CreatedAt: user.CreatedAt,
+		userListItems[i] = response.AdminUserListItem{
+			ID:              user.ID,
+			UUID:            user.UUID.String(),
+			Name:            user.Name,
+			Email:           user.Email,
+			Phone:           user.Phone,
+			Role:            user.Role,
+			AvatarUrl:       user.AvatarUrl,
+			IsActive:        user.IsActive,
+			EmailVerifiedAt: user.EmailVerifiedAt,
+			PhoneVerifiedAt: user.PhoneVerifiedAt,
+			LastLoginAt:     user.LastLoginAt,
+			CreatedAt:       user.CreatedAt,
+			UpdatedAt:       user.UpdatedAt,
 		}
 	}
 
 	totalPages := int((total + int64(req.Limit) - 1) / int64(req.Limit))
 
-	return &response.UserListResponse{
+	return &response.AdminUserListResponse{
 		Data: userListItems,
 		Pagination: response.PaginationResponse{
 			TotalPages: totalPages,

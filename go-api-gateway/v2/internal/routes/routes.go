@@ -51,10 +51,10 @@ func SetupRoutes(
 			{
 				//users.Any("/me/*path", gatewayHandler.UserProxyV2)
 
-				admin := users.Group("/")
+				admin := users.Group("")
 				admin.Use(middleware.RoleMiddleware("admin"))
 				{
-					admin.Any("/*path", gatewayHandler.UserProxyV2)
+					admin.Any("*path", gatewayHandler.UserProxyV2)
 				}
 			}
 			services := v2.Group("/services")

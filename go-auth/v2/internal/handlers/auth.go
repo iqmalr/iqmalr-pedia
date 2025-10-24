@@ -1,3 +1,4 @@
+// go-auth/v2/internal/handlers/auth.go
 package handlers
 
 import (

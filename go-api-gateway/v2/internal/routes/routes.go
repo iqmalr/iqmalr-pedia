@@ -71,6 +71,7 @@ func SetupRoutes(
 			{
 				admin.PUT("/vendor-applications/:id/approve", gatewayHandler.VendorProxyV1)
 				admin.PUT("/vendor-applications/:id/reject", gatewayHandler.VendorProxyV1)
+				admin.GET("/events", gatewayHandler.UserProxyV2)
 			}
 			internal := v2.Group("/internal")
 			internal.Use(middleware.InternalAuthMiddleware())

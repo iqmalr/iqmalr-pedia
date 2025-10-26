@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	config.LoadConfig()
+
 	database.ConnectDB()
 
 	vendorRepo := repositories.NewVendorRepository(database.GetDB())
@@ -38,7 +38,6 @@ func main() {
 	v1 := router.Group("/api/v1")
 	v1.Use(middleware.GatewayAuthMiddleware())
 	{
-
 		application := v1.Group("/vendor-applications")
 		{
 			application.POST("/", applicationHandler.CreateApplication)

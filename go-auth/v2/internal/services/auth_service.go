@@ -1,8 +1,11 @@
-// go-auth/v2/internal/services/auth_service.go
 package services
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -22,11 +25,17 @@ func NewAuthService(userRepo repositories.UserRepositoryInterface) *AuthService 
 }
 
 type UserService struct {
-	userRepo repositories.UserRepositoryInterface
+	userRepo  repositories.UserRepositoryInterface
+	cacheRepo repositories.CacheRepositoryInterface
+	eventRepo repositories.EventRepositoryInterface
 }
 
-func NewUserService(userRepo repositories.UserRepositoryInterface) *UserService {
-	return &UserService{userRepo: userRepo}
+func NewUserService(userRepo repositories.UserRepositoryInterface, cacheRepo repositories.CacheRepositoryInterface, eventRepo repositories.EventRepositoryInterface) *UserService {
+	return &UserService{
+		userRepo:  userRepo,
+		cacheRepo: cacheRepo,
+		eventRepo: eventRepo,
+	}
 }
 
 func (s *AuthService) Register(req *request.RegisterRequest) (*response.RegisterResponse, error) {
@@ -352,12 +361,23 @@ func (s *UserService) ChangePassword(userID uint, req *request.ChangePasswordReq
 	return s.userRepo.ChangePassword(userID, hashedPassword)
 }
 
-func (s *UserService) GetAdminUserByID(id uint) (*response.AdminUserResponse, error) {
+func (s *UserService) GetAdminUserByID(ctx context.Context, id uint) (*response.AdminUserResponse, error) {
+	cacheKey := fmt.Sprintf("user:%d", id)
+
+	cachedData, err := s.cacheRepo.Get(ctx, cacheKey)
+	if err == nil {
+		var userResponse response.AdminUserResponse
+		if err := json.Unmarshal([]byte(cachedData), &userResponse); err == nil {
+			return &userResponse, nil
+		}
+	}
+
 	user, err := s.userRepo.FindUserByID(id)
 	if err != nil {
 		return nil, err
 	}
-	return &response.AdminUserResponse{
+
+	userResponse := &response.AdminUserResponse{
 		ID:              user.ID,
 		UUID:            user.UUID.String(),
 		Name:            user.Name,
@@ -371,10 +391,18 @@ func (s *UserService) GetAdminUserByID(id uint) (*response.AdminUserResponse, er
 		LastLoginAt:     user.LastLoginAt,
 		CreatedAt:       user.CreatedAt,
 		UpdatedAt:       user.UpdatedAt,
-	}, nil
+	}
+
+	dataToCache, _ := json.Marshal(userResponse)
+	err = s.cacheRepo.Set(ctx, cacheKey, dataToCache, 10*time.Minute)
+	if err != nil {
+		return nil, err
+	} // Cache selama 10 menit
+
+	return userResponse, nil
 }
 
-func (s *UserService) UpdateAdminUser(id uint, req *request.UpdateUserRequest) (*response.AdminUserResponse, error) {
+func (s *UserService) UpdateAdminUser(ctx context.Context, id uint, req *request.UpdateUserRequest) (*response.AdminUserResponse, error) {
 	user, err := s.userRepo.FindUserByID(id)
 	if err != nil {
 		return nil, errors.New("user not found")
@@ -408,11 +436,40 @@ func (s *UserService) UpdateAdminUser(id uint, req *request.UpdateUserRequest) (
 		return nil, err
 	}
 
-	return s.GetAdminUserByID(id)
+	if err := s.cacheRepo.Delete(ctx, fmt.Sprintf("user:%d", id)); err != nil {
+		log.Printf("WARN: Failed to invalidate cache for user %d: %v", id, err)
+	}
+	if err := s.cacheRepo.DeleteByPattern(ctx, "users:*"); err != nil {
+		log.Printf("WARN: Failed to invalidate user list cache: %v", err)
+	}
+
+	eventMessage := map[string]interface{}{
+		"event": "USER_UPDATED",
+		"payload": map[string]interface{}{
+			"id": id,
+		},
+	}
+	messageBytes, _ := json.Marshal(eventMessage)
+	err = s.eventRepo.Publish(ctx, "user-updates", messageBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.GetAdminUserByID(ctx, id)
 }
 
-func (s *UserService) ListAdminUsers(req *request.ListUsersRequest) (*response.AdminUserListResponse, error) {
-	//users, total, err := s.userRepo.FindUsersWithPagination(req.Page, req.Limit, req.Search, req.Role, req.IsActive)
+func (s *UserService) ListAdminUsers(ctx context.Context, req *request.ListUsersRequest) (*response.AdminUserListResponse, error) {
+	cacheKey := fmt.Sprintf("users:page:%d:limit:%d:search:%s:role:%s:is_active:%v:sort:%s:order:%s",
+		req.Page, req.Limit, req.Search, req.Role, req.IsActive, req.SortBy, req.Order)
+
+	cachedData, err := s.cacheRepo.Get(ctx, cacheKey)
+	if err == nil {
+		var listResponse response.AdminUserListResponse
+		if err := json.Unmarshal([]byte(cachedData), &listResponse); err == nil {
+			return &listResponse, nil
+		}
+	}
+
 	users, total, err := s.userRepo.FindUsersWithPagination(req.Page, req.Limit, req.Search, req.Role, req.IsActive, req.SortBy, req.Order)
 	if err != nil {
 		return nil, err
@@ -438,8 +495,7 @@ func (s *UserService) ListAdminUsers(req *request.ListUsersRequest) (*response.A
 	}
 
 	totalPages := int((total + int64(req.Limit) - 1) / int64(req.Limit))
-
-	return &response.AdminUserListResponse{
+	listResponse := &response.AdminUserListResponse{
 		Data: userListItems,
 		Pagination: response.PaginationResponse{
 			TotalPages: totalPages,
@@ -447,5 +503,13 @@ func (s *UserService) ListAdminUsers(req *request.ListUsersRequest) (*response.A
 			Page:       req.Page,
 			Limit:      req.Limit,
 		},
-	}, nil
+	}
+
+	dataToCache, _ := json.Marshal(listResponse)
+	err = s.cacheRepo.Set(ctx, cacheKey, dataToCache, 10*time.Minute)
+	if err != nil {
+		return nil, err
+	}
+
+	return listResponse, nil
 }

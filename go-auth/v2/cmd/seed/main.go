@@ -12,13 +12,10 @@ import (
 )
 
 func main() {
-	// 1. Inisialisasi koneksi database
 	database.ConnectDB()
 	db := database.GetDB()
 
-	// 2. Jalankan seluruh proses seeding di dalam satu transaksi
 	err := db.Transaction(func(tx *gorm.DB) error {
-		// Jalankan semua fungsi seeder di sini, gunakan 'tx' bukan 'db'
 		fmt.Println("🌱 Memulai proses seeding massal untuk go-auth...")
 		if err := seedUsers(tx); err != nil {
 			return err // Jika gagal, kembalikan error untuk trigger rollback
@@ -27,10 +24,9 @@ func main() {
 			return err // Jika gagal, kembalikan error untuk trigger rollback
 		}
 		fmt.Println("✅ Semua proses seeding berhasil.")
-		return nil // Jika semua berhasil, transaksi akan di-commit
+		return nil
 	})
 
-	// 3. Cek hasil transaksi
 	if err != nil {
 		log.Fatalf("❌ Seeding gagal! Transaksi di-rollback. Error: %v", err)
 	} else {

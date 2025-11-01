@@ -98,9 +98,34 @@ func (h *GatewayHandler) getServiceURL(service, path string) string {
 	}
 }
 
+//	func (h *GatewayHandler) VendorProxyV1(c *gin.Context) {
+//		path := c.Param("path")
+//		targetURL := config.AppConfig.VendorServiceURL + "/api/v1" + path
+//
+//		req, err := utils.CreateProxyRequest(c, targetURL)
+//		if err != nil {
+//			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create proxy request"})
+//			return
+//		}
+//
+//		resp, err := h.httpClient.Do(req)
+//		if err != nil {
+//			c.JSON(http.StatusBadGateway, gin.H{"error": "Vendor service unavailable"})
+//			return
+//		}
+//		defer resp.Body.Close()
+//
+//		if err := utils.CopyResponse(c.Writer, resp); err != nil {
+//			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to copy response"})
+//			return
+//		}
+//	}
 func (h *GatewayHandler) VendorProxyV1(c *gin.Context) {
-	path := c.Param("path")
-	targetURL := config.AppConfig.VendorServiceURL + "/api/v1" + path
+	originalPath := c.Request.URL.Path
+
+	targetPath := strings.Replace(originalPath, "/api/v2", "/api/v1", 1)
+
+	targetURL := config.AppConfig.VendorServiceURL + targetPath
 
 	req, err := utils.CreateProxyRequest(c, targetURL)
 	if err != nil {

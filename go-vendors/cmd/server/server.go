@@ -64,6 +64,17 @@ func main() {
 			admin.PUT("/vendor-applications/:id/approve", applicationHandler.ApproveApplication)
 			admin.PUT("/vendor-applications/:id/reject", applicationHandler.RejectApplication)
 		}
+		// TODO: Implement Product Handlers, Services, dan Repositories
+		//
+		// products := v1.Group("/products")
+		// products.Use(middleware.ApprovedVendorMiddleware(vendorRepo))
+		// {
+		//     products.POST("/", productHandler.CreateProduct)
+		//     products.PUT("/:id", productHandler.UpdateProduct)
+		//     products.DELETE("/:id", productHandler.DeleteProduct)
+		//     products.GET("/", productHandler.ListProducts)
+		//     products.GET("/:id", productHandler.GetProductByID)
+		// }
 	}
 
 	port := config.AppConfig.Port

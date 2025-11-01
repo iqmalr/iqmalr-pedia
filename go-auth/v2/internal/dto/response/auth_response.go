@@ -3,8 +3,8 @@ package response
 import "time"
 
 type RegisterResponse struct {
-	Message string        `json:"message"`
-	User    *UserResponse `json:"user"`
+	Message string `json:"message"`
+	UUID    string `json:"uuid"`
 }
 
 type UserResponse struct {
@@ -19,9 +19,9 @@ type UserResponse struct {
 }
 
 type LoginResponse struct {
-	Message string     `json:"message"`
-	Token   string     `json:"token"`
-	User    *LoginUser `json:"user"`
+	Message string `json:"message"`
+	Token   string `json:"token"`
+	Role    string `json:"role"`
 }
 
 type LoginUser struct {
@@ -78,4 +78,41 @@ type PaginationResponse struct {
 	Total      int64 `json:"total"`
 	Page       int   `json:"page"`
 	Limit      int   `json:"limit"`
+}
+
+type AdminUserResponse struct {
+	ID              uint       `json:"id"`
+	UUID            string     `json:"uuid"`
+	Name            string     `json:"name"`
+	Email           string     `json:"email"`
+	Phone           string     `json:"phone"`
+	Role            string     `json:"role"`
+	AvatarUrl       string     `json:"avatar_url"`
+	IsActive        bool       `json:"is_active"`
+	EmailVerifiedAt *time.Time `json:"email_verified_at"`
+	PhoneVerifiedAt *time.Time `json:"phone_verified_at"`
+	LastLoginAt     *time.Time `json:"last_login_at"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
+}
+
+type AdminUserListResponse struct {
+	Data       []AdminUserListItem `json:"data"`
+	Pagination PaginationResponse  `json:"pagination"`
+}
+
+type AdminUserListItem struct {
+	ID              uint       `json:"id"`
+	UUID            string     `json:"uuid"`
+	Name            string     `json:"name"`
+	Email           string     `json:"email"`
+	Phone           string     `json:"phone"`
+	Role            string     `json:"role"`
+	AvatarUrl       string     `json:"avatar_url"`
+	IsActive        bool       `json:"is_active"`
+	EmailVerifiedAt *time.Time `json:"email_verified_at"`
+	PhoneVerifiedAt *time.Time `json:"phone_verified_at"`
+	LastLoginAt     *time.Time `json:"last_login_at"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }

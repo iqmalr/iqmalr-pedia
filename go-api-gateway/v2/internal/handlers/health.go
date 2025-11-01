@@ -16,7 +16,7 @@ func NewHealthHandler(redisClient *cache.RedisClient) *HealthHandler {
 	return &HealthHandler{
 		redisClient: redisClient,
 		services: map[string]string{
-			"auth": "http://localhost:8081/health",
+			"auth": "http://localhost:8082/health",
 		},
 	}
 }

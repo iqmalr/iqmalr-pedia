@@ -103,6 +103,12 @@ func (h *VendorHandler) UpdateVendor(c *gin.Context) {
 }
 
 func (h *VendorHandler) UpdateVendorStatus(c *gin.Context) {
+	userRole, exists := c.Get("role")
+	if !exists || userRole.(string) != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: admin role required"})
+		return
+	}
+
 	idParam := c.Param("id")
 	id, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {

@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"time"
+
 	"github.com/iqmalr-pedia/go-vendors/internal/models"
 	"gorm.io/gorm"
 )
@@ -13,8 +15,14 @@ type VendorRepositoryInterface interface {
 	Update(vendor *models.Vendor) error
 	UpdateStatus(id uint, status string) error
 	FindWithPagination(page, limit int, search, status, sort, order string) ([]models.Vendor, int64, error)
-	AddUserToVendor(vendorID, userID uint, role string) error
+	AddUserToVendor(vendorID, userID, invitedBy uint, role string) (*models.VendorUser, error)
 	IsUserPartOfVendor(vendorID, userID uint) (bool, error)
+	ApproveApplication(vendorID, ownerID, approvedBy uint) error
+	RejectApplication(vendorID uint) error
+	FindUsersByVendorID(vendorID uint) ([]models.VendorUser, error)
+	FindVendorUser(vendorID, userID uint) (*models.VendorUser, error)
+	UpdateVendorUser(vendorUser *models.VendorUser) error
+	RemoveVendorUser(vendorID, userID uint) error
 }
 
 type VendorRepository struct {
@@ -83,18 +91,77 @@ func (r *VendorRepository) FindWithPagination(page, limit int, search, status, s
 	return vendors, total, nil
 }
 
-func (r *VendorRepository) AddUserToVendor(vendorID, userID uint, role string) error {
+func (r *VendorRepository) AddUserToVendor(vendorID, userID uint, invitedBy uint, role string) (*models.VendorUser, error) {
+	now := time.Now()
 	vendorUser := &models.VendorUser{
-		VendorID: vendorID,
-		UserID:   userID,
-		Role:     role,
-		IsActive: true,
+		VendorID:  vendorID,
+		UserID:    userID,
+		Role:      role,
+		IsActive:  true,
+		InvitedBy: &invitedBy,
+		InvitedAt: &now,
+		JoinedAt:  &now,
 	}
-	return r.db.Create(vendorUser).Error
+
+	if err := r.db.Create(vendorUser).Error; err != nil {
+		return nil, err
+	}
+
+	return vendorUser, nil
 }
 
 func (r *VendorRepository) IsUserPartOfVendor(vendorID, userID uint) (bool, error) {
 	var count int64
 	err := r.db.Model(&models.VendorUser{}).Where("vendor_id = ? AND user_id = ? AND is_active = ?", vendorID, userID, true).Count(&count).Error
 	return count > 0, err
+}
+
+func (r *VendorRepository) ApproveApplication(vendorID, ownerID, approvedBy uint) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.Vendor{}).Where("id = ?", vendorID).Updates(map[string]interface{}{
+			"status":      "active",
+			"approved_at": time.Now(),
+			"approved_by": approvedBy,
+		}).Error; err != nil {
+			return err
+		}
+
+		now := time.Now()
+		vendorUser := &models.VendorUser{
+			VendorID: vendorID,
+			UserID:   ownerID,
+			Role:     "owner",
+			IsActive: true,
+			JoinedAt: &now,
+		}
+		if err := tx.Create(vendorUser).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+func (r *VendorRepository) RejectApplication(vendorID uint) error {
+	return r.db.Model(&models.Vendor{}).Where("id = ?", vendorID).Update("status", "rejected").Error
+}
+
+func (r *VendorRepository) FindUsersByVendorID(vendorID uint) ([]models.VendorUser, error) {
+	var vendorUsers []models.VendorUser
+	err := r.db.Preload("User").Where("vendor_id = ?", vendorID).Find(&vendorUsers).Error
+	return vendorUsers, err
+}
+
+func (r *VendorRepository) FindVendorUser(vendorID, userID uint) (*models.VendorUser, error) {
+	var vendorUser models.VendorUser
+	err := r.db.Preload("User").Where("vendor_id = ? AND user_id = ?", vendorID, userID).First(&vendorUser).Error
+	return &vendorUser, err
+}
+
+func (r *VendorRepository) UpdateVendorUser(vendorUser *models.VendorUser) error {
+	return r.db.Save(vendorUser).Error
+}
+
+func (r *VendorRepository) RemoveVendorUser(vendorID, userID uint) error {
+	return r.db.Where("vendor_id = ? AND user_id = ?", vendorID, userID).Delete(&models.VendorUser{}).Error
 }

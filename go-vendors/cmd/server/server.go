@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	config.LoadConfig()
+
 	database.ConnectDB()
 
 	vendorRepo := repositories.NewVendorRepository(database.GetDB())
@@ -22,6 +22,8 @@ func main() {
 
 	vendorService := services.NewVendorService(vendorRepo, httpClient)
 	vendorHandler := handlers.NewVendorHandler(vendorService)
+	applicationHandler := handlers.NewVendorApplicationHandler(vendorService)
+	teamHandler := handlers.NewVendorTeamHandler(vendorService)
 
 	router := gin.Default()
 
@@ -36,6 +38,11 @@ func main() {
 	v1 := router.Group("/api/v1")
 	v1.Use(middleware.GatewayAuthMiddleware())
 	{
+		application := v1.Group("/vendor-applications")
+		{
+			application.POST("/", applicationHandler.CreateApplication)
+		}
+
 		v1.POST("/vendors", vendorHandler.CreateVendor)
 		v1.GET("/vendors", vendorHandler.ListVendors)
 		v1.GET("/vendors/:id", vendorHandler.GetVendorByID)
@@ -44,12 +51,30 @@ func main() {
 		v1.POST("/vendors/:id/logo", vendorHandler.UploadLogo)
 		v1.POST("/vendors/:id/banner", vendorHandler.UploadBanner)
 
+		v1.POST("/vendors/:id/invitations", teamHandler.AddUserToVendor)
+		v1.GET("/vendors/:id/users", teamHandler.GetVendorUsers)
+		v1.PUT("/vendors/:id/users/:userId", teamHandler.UpdateVendorUser)
+		v1.DELETE("/vendors/:id/users/:userId", teamHandler.RemoveVendorUser)
+
 		// Admin only
 		admin := v1.Group("/admin")
 		admin.Use(middleware.RoleMiddleware("admin"))
 		{
 			admin.PUT("/vendors/:id/status", vendorHandler.UpdateVendorStatus)
+			admin.PUT("/vendor-applications/:id/approve", applicationHandler.ApproveApplication)
+			admin.PUT("/vendor-applications/:id/reject", applicationHandler.RejectApplication)
 		}
+		// TODO: Implement Product Handlers, Services, dan Repositories
+		//
+		// products := v1.Group("/products")
+		// products.Use(middleware.ApprovedVendorMiddleware(vendorRepo))
+		// {
+		//     products.POST("/", productHandler.CreateProduct)
+		//     products.PUT("/:id", productHandler.UpdateProduct)
+		//     products.DELETE("/:id", productHandler.DeleteProduct)
+		//     products.GET("/", productHandler.ListProducts)
+		//     products.GET("/:id", productHandler.GetProductByID)
+		// }
 	}
 
 	port := config.AppConfig.Port

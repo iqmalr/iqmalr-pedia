@@ -1,13 +1,19 @@
 package handlers
 
 import (
+	"context"
+	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"github.com/iqmalr-pedia/go-auth/v2/internal/dto/request"
 	"github.com/iqmalr-pedia/go-auth/v2/internal/dto/response"
 	"github.com/iqmalr-pedia/go-auth/v2/internal/services"
+	"github.com/iqmalr-pedia/go-auth/v2/pkg/database"
 )
 
 type UserHandler struct {
@@ -87,7 +93,7 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 		return
 	}
 
-	profile, err := h.userService.GetUserByID(uint(id))
+	profile, err := h.userService.GetAdminUserByID(c.Request.Context(), uint(id))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
@@ -110,7 +116,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 		return
 	}
 
-	profile, err := h.userService.UpdateUser(uint(id), &req)
+	profile, err := h.userService.UpdateAdminUser(c.Request.Context(), uint(id), &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -119,21 +125,37 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, profile)
 }
 
-func (h *UserHandler) DeactivateUser(c *gin.Context) {
-	idParam := c.Param("id")
-	id, err := strconv.ParseUint(idParam, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
-		return
-	}
-
-	if err := h.userService.DeactivateUser(uint(id)); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, response.MessageResponse{Message: "User deactivated successfully"})
-}
+//func (h *UserHandler) DeactivateUser(c *gin.Context) {
+//	idParam := c.Param("id")
+//	id, err := strconv.ParseUint(idParam, 10, 32)
+//	if err != nil {
+//		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+//		return
+//	}
+//
+//	if err := h.userService.DeactivateUser(uint(id)); err != nil {
+//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+//		return
+//	}
+//
+//	c.JSON(http.StatusOK, response.MessageResponse{Message: "User deactivated successfully"})
+//}
+//
+//func (h *UserHandler) ReactivateUser(c *gin.Context) {
+//	idParam := c.Param("id")
+//	id, err := strconv.ParseUint(idParam, 10, 32)
+//	if err != nil {
+//		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+//		return
+//	}
+//
+//	if err := h.userService.ReactivateUser(uint(id)); err != nil {
+//		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+//		return
+//	}
+//
+//	c.JSON(http.StatusOK, response.MessageResponse{Message: "User reactivated successfully"})
+//}
 
 func (h *UserHandler) ListUsers(c *gin.Context) {
 	var req request.ListUsersRequest
@@ -142,11 +164,57 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 		return
 	}
 
-	users, err := h.userService.ListUsers(&req)
+	users, err := h.userService.ListAdminUsers(c.Request.Context(), &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
 		return
 	}
 
 	c.JSON(http.StatusOK, users)
+}
+
+func (h *UserHandler) SubscribeToUserEvents(c *gin.Context) {
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("Access-Control-Allow-Origin", "*")
+
+	rdb := database.GetRedis()
+	if rdb == nil {
+		c.Status(http.StatusInternalServerError)
+		return
+	}
+
+	pubsub := rdb.Subscribe(context.Background(), "user-updates")
+	defer func(pubsub *redis.PubSub) {
+		err := pubsub.Close()
+		if err != nil {
+
+		}
+	}(pubsub)
+
+	ch := pubsub.Channel()
+
+	clientGone := c.Request.Context().Done()
+
+	c.Stream(func(w io.Writer) bool {
+		select {
+		case <-clientGone:
+			log.Println("Client disconnected from SSE")
+			return false
+		case msg, ok := <-ch:
+			if !ok {
+				log.Println("Redis pubsub channel closed unexpectedly")
+				return false
+			}
+
+			_, err := fmt.Fprintf(w, "data: %s\n\n", msg.Payload)
+			if err != nil {
+				log.Printf("Error writing to client: %v", err)
+				return false
+			}
+
+			return true
+		}
+	})
 }

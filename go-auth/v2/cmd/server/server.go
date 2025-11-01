@@ -13,12 +13,16 @@ import (
 
 func main() {
 	database.ConnectDB()
+	database.ConnectRedis()
 
 	userRepo := repositories.NewUserRepository(database.GetDB())
 	addressRepo := repositories.NewAddressRepository(database.GetDB())
+	cacheRepo := repositories.NewCacheRepository(database.GetRedis())
+	eventRepo := repositories.NewEventRepository(database.GetRedis())
 
 	authService := services.NewAuthService(userRepo)
-	userService := services.NewUserService(userRepo)
+	//userService := services.NewUserService(userRepo)
+	userService := services.NewUserService(userRepo, cacheRepo, eventRepo)
 	addressService := services.NewAddressService(addressRepo)
 
 	authHandler := handlers.NewAuthHandler(authService)
@@ -65,10 +69,10 @@ func main() {
 			admin := users.Group("/")
 			admin.Use(middleware.RoleMiddleware("admin"))
 			{
-				admin.GET("/", userHandler.ListUsers)
+				admin.GET("", userHandler.ListUsers)
 				admin.GET("/:id", userHandler.GetUserByID)
 				admin.PUT("/:id", userHandler.UpdateUser)
-				admin.DELETE("/:id", userHandler.DeactivateUser)
+				admin.PATCH("/:id", userHandler.UpdateUser)
 			}
 
 			addresses := users.Group("/me/addresses")
@@ -88,6 +92,7 @@ func main() {
 			admin.GET("/dashboard", func(c *gin.Context) {
 				c.JSON(200, gin.H{"message": "Welcome to admin dashboard"})
 			})
+			admin.GET("/events", userHandler.SubscribeToUserEvents)
 		}
 
 		vendor := v2.Group("/vendor")

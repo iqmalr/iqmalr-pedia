@@ -20,9 +20,7 @@ func NewGatewayHandler() *GatewayHandler {
 }
 
 func (h *GatewayHandler) AuthProxyV2(c *gin.Context) {
-	//path := c.Param("path")
 	originalPath := c.Request.URL.Path
-	//targetURL := config.AppConfig.AuthServiceURL + "/api/v2/auth" + path
 	targetURL := config.AppConfig.AuthServiceURL + originalPath
 
 	req, err := utils.CreateProxyRequest(c, targetURL)
@@ -98,28 +96,6 @@ func (h *GatewayHandler) getServiceURL(service, path string) string {
 	}
 }
 
-//	func (h *GatewayHandler) VendorProxyV1(c *gin.Context) {
-//		path := c.Param("path")
-//		targetURL := config.AppConfig.VendorServiceURL + "/api/v1" + path
-//
-//		req, err := utils.CreateProxyRequest(c, targetURL)
-//		if err != nil {
-//			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create proxy request"})
-//			return
-//		}
-//
-//		resp, err := h.httpClient.Do(req)
-//		if err != nil {
-//			c.JSON(http.StatusBadGateway, gin.H{"error": "Vendor service unavailable"})
-//			return
-//		}
-//		defer resp.Body.Close()
-//
-//		if err := utils.CopyResponse(c.Writer, resp); err != nil {
-//			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to copy response"})
-//			return
-//		}
-//	}
 func (h *GatewayHandler) VendorProxyV1(c *gin.Context) {
 	originalPath := c.Request.URL.Path
 
@@ -146,19 +122,46 @@ func (h *GatewayHandler) VendorProxyV1(c *gin.Context) {
 	}
 }
 
+func (h *GatewayHandler) ProductProxyV1(c *gin.Context) {
+	originalPath := c.Request.URL.Path
+
+	targetPath := strings.Replace(originalPath, "/api/v2", "/api/v1", 1)
+
+	targetURL := config.AppConfig.ProductServiceURL + targetPath
+
+	req, err := utils.CreateProxyRequest(c, targetURL)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create proxy request"})
+		return
+	}
+
+	resp, err := h.httpClient.Do(req)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "Product service unavailable"})
+		return
+	}
+	defer resp.Body.Close()
+
+	if err := utils.CopyResponse(c.Writer, resp); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to copy response"})
+		return
+	}
+}
+
 func (h *GatewayHandler) ServiceDiscovery(c *gin.Context) {
 	services := map[string]string{
-		"auth-v2": config.AppConfig.AuthServiceURL,
-		"user-v1": config.AppConfig.VendorServiceURL,
+		"auth-v2":    config.AppConfig.AuthServiceURL,
+		"user-v1":    config.AppConfig.VendorServiceURL,
+		"product-v1": config.AppConfig.ProductServiceURL,
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"services": services,
 	})
 }
+
 func (h *GatewayHandler) UserProxyV2(c *gin.Context) {
 	path := c.Param("path")
-	//targetURL := config.AppConfig.AuthServiceURL + "/api/v2/users" + path
 	baseURL := config.AppConfig.AuthServiceURL + "/api/v2/users" + path
 
 	targetURL := baseURL

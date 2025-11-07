@@ -1,0 +1,262 @@
+{
+  "info": {
+    "name": "go-product v1 API",
+    "description": "Postman collection for go-product service v1. Includes health and category endpoints with role-based access (customer/admin). Use collection variables to set base URL and tokens.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8083" },
+    { "key": "apiPrefix", "value": "/api/v1" },
+    { "key": "access_token_customer", "value": "" },
+    { "key": "access_token_admin", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "const json = pm.response.json();",
+                  "pm.test('Service go-product', () => json.service === 'go-product');",
+                  "pm.test('Status OK', () => json.status === 'OK');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Categories (Public: any authenticated)",
+      "item": [
+        {
+          "name": "GET {{apiPrefix}}/categories (list)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token_customer}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/categories?parent_id=&level=&is_active=&sort=&order=",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "categories"],
+              "query": [
+                { "key": "parent_id", "value": "" },
+                { "key": "level", "value": "" },
+                { "key": "is_active", "value": "" },
+                { "key": "sort", "value": "" },
+                { "key": "order", "value": "" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property('data');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET {{apiPrefix}}/categories/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token_customer}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/categories/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "categories", "1"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 or 404', () => [200,404].includes(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET {{apiPrefix}}/categories/slug/:slug",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token_customer}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/categories/slug/sample-slug",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "categories", "slug", "sample-slug"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 or 404', () => [200,404].includes(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET {{apiPrefix}}/categories/tree",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token_customer}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/categories/tree?is_active=",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "categories", "tree"],
+              "query": [
+                { "key": "is_active", "value": "" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property('data');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Categories (Admin only)",
+      "item": [
+        {
+          "name": "POST {{apiPrefix}}/categories",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token_admin}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "categories"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"parent_id\": null,\n  \"name\": \"Electronics\",\n  \"description\": \"All electronic items\",\n  \"icon\": \"mdi-chip\",\n  \"image_url\": \"https://example.com/images/electronics.jpg\",\n  \"level\": 1,\n  \"sort_order\": 0,\n  \"is_active\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Created 201', () => pm.response.code === 201);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property('id');",
+                  "pm.collectionVariables.set('created_category_id', json.id || '');",
+                  "pm.collectionVariables.set('created_category_slug', json.slug || '');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT {{apiPrefix}}/categories/:id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token_admin}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/categories/{{created_category_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "categories", "{{created_category_id}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Electronics & Gadgets\",\n  \"description\": \"Updated description\",\n  \"icon\": \"mdi-chip\",\n  \"image_url\": \"https://example.com/images/electronics-v2.jpg\",\n  \"level\": 1,\n  \"sort_order\": 1,\n  \"is_active\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property('id');",
+                  "pm.test('Updated name', () => json.name && json.name.length > 0);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE {{apiPrefix}}/categories/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token_admin}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/categories/{{created_category_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "categories", "{{created_category_id}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 or 204', () => [200,204].includes(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

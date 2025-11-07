@@ -312,6 +312,207 @@
       ]
     },
     {
+      "name": "Categories (via Gateway to go-product v1)",
+      "item": [
+        {
+          "name": "Categories (Public: any authenticated)",
+          "item": [
+            {
+              "name": "GET {{api_prefix}}/categories (list)",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_url}}{{api_prefix}}/categories?parent_id=&level=&is_active=&sort=&order=",
+                  "host": ["{{base_url}}"],
+                  "path": ["{{api_prefix}}", "categories"],
+                  "query": [
+                    { "key": "parent_id", "value": "" },
+                    { "key": "level", "value": "" },
+                    { "key": "is_active", "value": "" },
+                    { "key": "sort", "value": "" },
+                    { "key": "order", "value": "" }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.code === 200);",
+                      "const json = pm.response.json();",
+                      "pm.expect(json).to.have.property('data');"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET {{api_prefix}}/categories/:id",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_url}}{{api_prefix}}/categories/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["{{api_prefix}}", "categories", "1"]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200 or 404', () => [200,404].includes(pm.response.code));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET {{api_prefix}}/categories/slug/:slug",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_url}}{{api_prefix}}/categories/slug/sample-slug",
+                  "host": ["{{base_url}}"],
+                  "path": ["{{api_prefix}}", "categories", "slug", "sample-slug"]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200 or 404', () => [200,404].includes(pm.response.code));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET {{api_prefix}}/categories/tree",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_url}}{{api_prefix}}/categories/tree?is_active=",
+                  "host": ["{{base_url}}"],
+                  "path": ["{{api_prefix}}", "categories", "tree"],
+                  "query": [ { "key": "is_active", "value": "" } ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.code === 200);",
+                      "const json = pm.response.json();",
+                      "pm.expect(json).to.have.property('data');"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Categories (Admin only)",
+          "item": [
+            {
+              "name": "POST {{api_prefix}}/categories",
+              "request": {
+                "method": "POST",
+                "header": [ { "key": "Content-Type", "value": "application/json" } ],
+                "url": {
+                  "raw": "{{base_url}}{{api_prefix}}/categories",
+                  "host": ["{{base_url}}"],
+                  "path": ["{{api_prefix}}", "categories"]
+                },
+                "body": { "mode": "raw", "raw": "{\n  \"parent_id\": null,\n  \"name\": \"Electronics\",\n  \"description\": \"All electronic items\",\n  \"icon\": \"mdi-chip\",\n  \"image_url\": \"https://example.com/images/electronics.jpg\",\n  \"level\": 1,\n  \"sort_order\": 0,\n  \"is_active\": true\n}" }
+              },
+              "event": [
+                { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+                  "pm.collectionVariables.set('selected_role', 'admin');"
+                ] } },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Created 201', () => pm.response.code === 201);",
+                      "const json = pm.response.json();",
+                      "pm.expect(json).to.have.property('id');",
+                      "pm.collectionVariables.set('created_category_id', json.id || '');",
+                      "pm.collectionVariables.set('created_category_slug', json.slug || '');"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT {{api_prefix}}/categories/:id",
+              "request": {
+                "method": "PUT",
+                "header": [ { "key": "Content-Type", "value": "application/json" } ],
+                "url": {
+                  "raw": "{{base_url}}{{api_prefix}}/categories/{{created_category_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["{{api_prefix}}", "categories", "{{created_category_id}}"]
+                },
+                "body": { "mode": "raw", "raw": "{\n  \"name\": \"Electronics & Gadgets\",\n  \"description\": \"Updated description\",\n  \"icon\": \"mdi-chip\",\n  \"image_url\": \"https://example.com/images/electronics-v2.jpg\",\n  \"level\": 1,\n  \"sort_order\": 1,\n  \"is_active\": true\n}" }
+              },
+              "event": [
+                { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+                  "pm.collectionVariables.set('selected_role', 'admin');"
+                ] } },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.code === 200);",
+                      "const json = pm.response.json();",
+                      "pm.expect(json).to.have.property('id');",
+                      "pm.test('Updated name', () => json.name && json.name.length > 0);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE {{api_prefix}}/categories/:id",
+              "request": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{base_url}}{{api_prefix}}/categories/{{created_category_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["{{api_prefix}}", "categories", "{{created_category_id}}"]
+                }
+              },
+              "event": [
+                { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+                  "pm.collectionVariables.set('selected_role', 'admin');"
+                ] } },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200 or 204', () => [200,204].includes(pm.response.code));"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Internal (guarded)",
       "item": [
         {

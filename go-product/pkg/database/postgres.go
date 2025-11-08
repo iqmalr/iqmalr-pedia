@@ -61,3 +61,27 @@ func getEnv(key, defaultValue string) string {
 func GetDB() *gorm.DB {
 	return Database.DB
 }
+
+func WithTransaction(db *gorm.DB, fn func(*gorm.DB) error) error {
+	tx := db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			log.Printf("Transaction rolled back due to panic: %v", r)
+		}
+	}()
+
+	if err := fn(tx); err != nil {
+		if rbErr := tx.Rollback().Error; rbErr != nil {
+			log.Printf("Failed to rollback transaction: %v", rbErr)
+		}
+		return err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		log.Printf("Failed to commit transaction: %v", err)
+		return err
+	}
+
+	return nil
+}

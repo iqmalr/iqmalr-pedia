@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func main() {
+func Seed() {
 	database.ConnectDB()
 	db := database.GetDB()
 

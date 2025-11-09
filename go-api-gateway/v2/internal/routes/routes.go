@@ -80,9 +80,20 @@ func SetupRoutes(
 				products.Any("/*path", gatewayHandler.ProductProxyV1)
 			}
 			categories := v2.Group("/categories")
-			categories.Use(middleware.AuthMiddleware())
 			{
-				categories.Any("/*path", gatewayHandler.ProductProxyV1)
+				categories.GET("", gatewayHandler.ProductProxyV1)
+				categories.GET("/:id", gatewayHandler.ProductProxyV1)
+				categories.GET("/slug/:slug", gatewayHandler.ProductProxyV1)
+				categories.GET("/tree", gatewayHandler.ProductProxyV1)
+
+				admin := categories.Group("")
+				admin.Use(middleware.AuthMiddleware())
+				admin.Use(middleware.RoleMiddleware("admin"))
+				{
+					admin.POST("", gatewayHandler.ProductProxyV1)
+					admin.PUT("/:id", gatewayHandler.ProductProxyV1)
+					admin.DELETE("/:id", gatewayHandler.ProductProxyV1)
+				}
 			}
 			internal := v2.Group("/internal")
 			internal.Use(middleware.InternalAuthMiddleware())

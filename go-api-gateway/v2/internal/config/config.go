@@ -34,11 +34,11 @@ func LoadConfig() {
 		Port:              getEnv("PORT", "8080"),
 		AuthServiceURL:    getEnv("AUTH_SERVICE_URL", "http://localhost:8082"),
 		VendorServiceURL:  getEnv("VENDOR_SERVICE_URL", "http://localhost:8083"),
-		ProductServiceURL: getEnv("PRODUCT_SERVICE_URL", "http://localhost:8083"),
+		ProductServiceURL: getEnv("PRODUCT_SERVICE_URL", "http://localhost:8084"),
 		RedisURL:          getEnv("REDIS_URL", "redis://localhost:6379"),
 		RateLimit:         rateLimit,
 		RateLimitWindow:   rateLimitWindow,
-		JWTSecret:         getEnv("JWT_SECRET", "your-api-gateway-secret"),
+		JWTSecret:         getEnv("JWT_SECRET", "rahasia"),
 		Environment:       getEnv("ENVIRONMENT", "development"),
 		InternalAPIKey:    getEnv("INTERNAL_API_KEY", "sangat-rahasia-juga-untuk-internal"),
 	}

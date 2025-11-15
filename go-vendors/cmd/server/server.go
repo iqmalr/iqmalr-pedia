@@ -18,13 +18,16 @@ func main() {
 	database.ConnectDB()
 
 	vendorRepo := repositories.NewVendorRepository(database.GetDB())
+	vendorAccountBankRepo := repositories.NewVendorAccountBankRepository(database.GetDB())
 	httpClient := utils.NewHTTPClient()
 
 	vendorService := services.NewVendorService(vendorRepo, httpClient)
+	vendorAccountBankService := services.NewVendorAccountBankService(vendorRepo, vendorAccountBankRepo)
+
 	vendorHandler := handlers.NewVendorHandler(vendorService)
 	applicationHandler := handlers.NewVendorApplicationHandler(vendorService)
 	teamHandler := handlers.NewVendorTeamHandler(vendorService)
-
+	vendorAccountBankHandler := handlers.NewVendorBankAccountHandler(vendorAccountBankService)
 	router := gin.Default()
 
 	router.GET("/health", func(c *gin.Context) {
@@ -56,6 +59,10 @@ func main() {
 		v1.PUT("/vendors/:id/users/:userId", teamHandler.UpdateVendorUser)
 		v1.DELETE("/vendors/:id/users/:userId", teamHandler.RemoveVendorUser)
 
+		v1.POST("/vendors/:id/bank-accounts", vendorAccountBankHandler.CreateAccountBankHandlers)
+		v1.GET("/vendors/:id/bank-accounts", vendorAccountBankHandler.ShowAccountBankByID)
+		v1.PUT("/vendors/:id/bank-accounts", vendorAccountBankHandler.UpdateAccountBankHandlers)
+		v1.PUT("DELETE /vendors/:vendorId/bank-accounts/:accountId", vendorAccountBankHandler.DeleteAccountBank)
 		// Admin only
 		admin := v1.Group("/admin")
 		admin.Use(middleware.RoleMiddleware("admin"))

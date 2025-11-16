@@ -35,11 +35,31 @@ func (v *VendorAccountBankService) mapAccountBankResponse(vendor *models.VendorB
 		UpdatedAt:     vendor.UpdatedAt,
 	}
 }
+func (v *VendorAccountBankService) mapArrayAccountBankResponses(vendors *[]models.VendorBankAccount) *[]response.VendorAccountBankResponse {
+
+	responses := make([]response.VendorAccountBankResponse, 0)
+
+	for _, vendor := range *vendors {
+		responses = append(responses, response.VendorAccountBankResponse{
+			ID:            vendor.ID,
+			VendorID:      vendor.VendorID,
+			BankName:      vendor.BankName,
+			AccountNumber: vendor.AccountNumber,
+			AccountHolder: vendor.AccountHolder,
+			IsVerified:    vendor.IsVerified,
+			IsPrimary:     vendor.IsPrimary,
+			CreatedAt:     vendor.CreatedAt,
+			UpdatedAt:     vendor.UpdatedAt,
+		})
+	}
+
+	return &responses
+}
 
 func (v *VendorAccountBankService) CreateAccountBank(VendorID uint, req *request.CreateAccountBank) (*response.VendorAccountBankResponse, error) {
 	_, err := v.vendorRepo.FindByID(VendorID)
-	if err == nil {
-		return nil, errors.New("This account is already exist")
+	if err == gorm.ErrRecordNotFound {
+		return nil, errors.New("Vendor is not found")
 	}
 
 	vendorAccountBank := &models.VendorBankAccount{
@@ -56,21 +76,28 @@ func (v *VendorAccountBankService) CreateAccountBank(VendorID uint, req *request
 	return v.mapAccountBankResponse(vendorAccountBank), nil
 }
 
-func (v *VendorAccountBankService) GetAccountBankByID(AccountID uint) (*response.VendorAccountBankResponse, error) {
-	value, err := v.vendorAccountBankRepo.GetAccountBankByID(AccountID)
+func (v *VendorAccountBankService) GetAccountBankByID(VendorID uint) (*[]response.VendorAccountBankResponse, error) {
+	_, err := v.vendorRepo.FindByID(VendorID)
 	if err != nil {
 		return nil, errors.New("Bank account not found")
 	}
-	return v.mapAccountBankResponse(value), nil
+
+	value, err := v.vendorAccountBankRepo.GetAccountBankByVendorID(VendorID)
+	if err != nil {
+		return nil, errors.New(err.Error())
+	}
+	return v.mapArrayAccountBankResponses(value), nil
 }
 
 func (v *VendorAccountBankService) UpdateAccountBank(AccountID uint, req *request.UpdateAccountBank) (*response.VendorAccountBankResponse, error) {
-	_, err := v.vendorAccountBankRepo.GetAccountBankByID(AccountID)
+	value, err := v.vendorAccountBankRepo.GetAccountBankByID(AccountID)
 	if err == gorm.ErrRecordNotFound {
 		return nil, errors.New("This account not found")
 	}
 
 	vendorAccountBank := &models.VendorBankAccount{
+		ID:            value.ID,
+		VendorID:      value.VendorID,
 		BankName:      req.BankName,
 		AccountNumber: req.AccountNumber,
 		AccountHolder: req.AccountHolder,
@@ -84,7 +111,7 @@ func (v *VendorAccountBankService) UpdateAccountBank(AccountID uint, req *reques
 }
 
 func (v *VendorAccountBankService) DeleteAccountBank(VendorID, AccountID uint) (*response.MessageResponse, error) {
-	_, err := v.vendorAccountBankRepo.GetAccountBankByID(VendorID)
+	_, err := v.vendorAccountBankRepo.GetAccountBankByID(AccountID)
 	if err != nil {
 		return nil, errors.New("Bank account not found")
 	}

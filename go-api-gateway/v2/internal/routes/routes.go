@@ -66,6 +66,7 @@ func SetupRoutes(
 			{
 				vendors.GET("", gatewayHandler.VendorProxyV1)
 				vendors.Any("/*path", gatewayHandler.VendorProxyV1)
+				vendors.POST("", gatewayHandler.VendorProxyV1)
 			}
 			admin := v2.Group("/admin")
 			admin.Use(middleware.AuthMiddleware(), middleware.RoleMiddleware("admin"))

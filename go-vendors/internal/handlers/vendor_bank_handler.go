@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 
@@ -14,9 +15,10 @@ type VendorBankAccountHandler struct {
 	vendorService      *services.VendorService
 }
 
-func NewVendorBankAccountHandler(v *services.VendorAccountBankService) *VendorBankAccountHandler {
+func NewVendorBankAccountHandler(va *services.VendorAccountBankService, v *services.VendorService) *VendorBankAccountHandler {
 	return &VendorBankAccountHandler{
-		vendorBankServices: v,
+		vendorBankServices: va,
+		vendorService:      v,
 	}
 }
 
@@ -78,11 +80,11 @@ func (v *VendorBankAccountHandler) UpdateAccountBankHandlers(c *gin.Context) {
 }
 
 func (v *VendorBankAccountHandler) DeleteAccountBank(c *gin.Context) {
-	idVendor := c.Param("vendorId")
-	idAccount := c.Param("accounId")
+	idVendor := c.Param("id")
+	idAccount := c.Param("account_id")
 	vendorId, err := strconv.ParseUint(idVendor, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid vendor ID"})
 		return
 	}
 	accountId, err := strconv.ParseUint(idAccount, 10, 32)
@@ -91,6 +93,8 @@ func (v *VendorBankAccountHandler) DeleteAccountBank(c *gin.Context) {
 		return
 	}
 
+	log.Print("ID Vendor  ", vendorId)
+	log.Print("ID Account  ", accountId)
 	vendor, err := v.vendorService.GetVendorByID(uint(vendorId))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})

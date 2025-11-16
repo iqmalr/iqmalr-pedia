@@ -27,7 +27,7 @@ func main() {
 	vendorHandler := handlers.NewVendorHandler(vendorService)
 	applicationHandler := handlers.NewVendorApplicationHandler(vendorService)
 	teamHandler := handlers.NewVendorTeamHandler(vendorService)
-	vendorAccountBankHandler := handlers.NewVendorBankAccountHandler(vendorAccountBankService)
+	vendorAccountBankHandler := handlers.NewVendorBankAccountHandler(vendorAccountBankService, vendorService)
 	router := gin.Default()
 
 	router.GET("/health", func(c *gin.Context) {
@@ -62,7 +62,7 @@ func main() {
 		v1.POST("/vendors/:id/bank-accounts", vendorAccountBankHandler.CreateAccountBankHandlers)
 		v1.GET("/vendors/:id/bank-accounts", vendorAccountBankHandler.ShowAccountBankByID)
 		v1.PUT("/vendors/:id/bank-accounts", vendorAccountBankHandler.UpdateAccountBankHandlers)
-		v1.PUT("DELETE /vendors/:vendorId/bank-accounts/:accountId", vendorAccountBankHandler.DeleteAccountBank)
+		v1.DELETE("/vendors/:id/bank-accounts/:account_id", vendorAccountBankHandler.DeleteAccountBank)
 		// Admin only
 		admin := v1.Group("/admin")
 		admin.Use(middleware.RoleMiddleware("admin"))

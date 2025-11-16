@@ -43,6 +43,8 @@ type CategoryTreeListResponse struct {
 	Data []CategoryTreeResponse `json:"data"`
 }
 
-type MessageResponse struct {
-	Message string `json:"message"`
+type SimpleCategoryResponse struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+	Slug string `json:"slug"`
 }

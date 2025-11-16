@@ -1,3 +1,4 @@
+// go-product/pkg/database/postgres.go
 package database
 
 import (
@@ -40,6 +41,11 @@ func ConnectDB() {
 
 	err = db.AutoMigrate(
 		&models.Category{},
+		&models.Product{},
+		&models.ProductImage{},
+		&models.ProductVariant{},
+		&models.Vendor{},
+		&models.ProductCategory{},
 	)
 	if err != nil {
 		log.Fatal("Failed to migrate database: ", err)

@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
+	"github.com/iqmalr-pedia/go-product/internal/clients"
 	"github.com/iqmalr-pedia/go-product/internal/config"
 	"github.com/iqmalr-pedia/go-product/internal/handlers"
 	"github.com/iqmalr-pedia/go-product/internal/middleware"
@@ -23,9 +24,17 @@ func main() {
 			return
 		}
 	}
+
 	categoryRepo := repositories.NewCategoryRepository(database.GetDB())
+	productRepo := repositories.NewProductRepository(database.GetDB())
+	vendorClient := clients.NewVendorClient()
+	vendorService := services.NewVendorService(vendorClient)
+
 	categoryService := services.NewCategoryService(categoryRepo)
+	productService := services.NewProductService(productRepo, categoryRepo, vendorService)
+
 	categoryHandler := handlers.NewCategoryHandler(categoryService)
+	productHandler := handlers.NewProductHandler(productService)
 
 	router := gin.Default()
 
@@ -45,6 +54,29 @@ func main() {
 				admin.POST("", categoryHandler.CreateCategory)
 				admin.PUT("/:id", categoryHandler.UpdateCategory)
 				admin.DELETE("/:id", categoryHandler.DeleteCategory)
+			}
+		}
+
+		products := v1.Group("/products")
+		{
+			products.GET("", productHandler.ListProducts)
+			products.GET("/:id", productHandler.GetProductByID)
+			products.GET("/slug/:slug", productHandler.GetProductBySlug)
+
+			auth := products.Group("")
+			auth.Use(middleware.GatewayAuthMiddleware())
+			{
+				auth.POST("", productHandler.CreateProduct)
+				auth.PUT("/:id", productHandler.UpdateProduct)
+				auth.DELETE("/:id", productHandler.DeleteProduct)
+				auth.PUT("/:id/publish", productHandler.PublishProduct)
+				auth.PUT("/:id/unpublish", productHandler.UnpublishProduct)
+
+				admin := auth.Group("")
+				admin.Use(middleware.RoleMiddleware("admin"))
+				{
+					admin.PUT("/:id/status", productHandler.UpdateProductStatus)
+				}
 			}
 		}
 	}

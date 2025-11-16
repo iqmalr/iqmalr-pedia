@@ -30,7 +30,7 @@ func NewCategoryService(categoryRepo repositories.CategoryRepository) CategorySe
 }
 
 func (s *categoryService) CreateCategory(req *request.CreateCategoryRequest) (*response.CategoryResponse, error) {
-	slug := generateSlug(req.Name)
+	slug := generateCategorySlug(req.Name)
 
 	isActive := true
 	if req.IsActive != nil {
@@ -112,7 +112,7 @@ func (s *categoryService) UpdateCategory(id uint, req *request.UpdateCategoryReq
 
 	if req.Name != "" {
 		category.Name = req.Name
-		category.Slug = generateSlug(req.Name)
+		category.Slug = generateCategorySlug(req.Name)
 	}
 
 	if req.Desc != "" {
@@ -250,7 +250,7 @@ func (s *categoryService) toCategoryTreeResponse(category *models.Category) *res
 	return resp
 }
 
-func generateSlug(name string) string {
+func generateCategorySlug(name string) string {
 	slug := strings.ToLower(name)
 	slug = strings.ReplaceAll(slug, " ", "-")
 	slug = strings.ReplaceAll(slug, "_", "-")

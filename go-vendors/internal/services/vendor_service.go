@@ -55,20 +55,9 @@ func (s *VendorService) CreateVendor(userID uint, req *request.CreateVendorReque
 		return nil, errors.New("user already has a vendor")
 	}
 
-	slug := utils.GenerateSlug(req.Name)
-	for {
-		_, err := s.vendorRepo.FindBySlug(slug)
-		if err != nil {
-			break
-		}
-		// TODO: Implement a better slug uniqueness logic (e.g., add counter)
-		slug += "-1"
-	}
-
 	vendor := &models.Vendor{
 		OwnerID:      userID,
 		Name:         req.Name,
-		Slug:         slug,
 		Description:  req.Description,
 		ContactEmail: req.ContactEmail,
 		ContactPhone: req.ContactPhone,
@@ -367,19 +356,9 @@ func (s *VendorService) CreateApplication(userID uint, req *request.CreateApplic
 		return nil, errors.New("you already have a pending application")
 	}
 
-	slug := utils.GenerateSlug(req.Name)
-	for {
-		_, err := s.vendorRepo.FindBySlug(slug)
-		if err != nil {
-			break
-		}
-		slug += "-1"
-	}
-
 	vendor := &models.Vendor{
 		OwnerID:      userID,
 		Name:         req.Name,
-		Slug:         slug,
 		Description:  req.Description,
 		ContactEmail: req.ContactEmail,
 		ContactPhone: req.ContactPhone,

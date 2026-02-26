@@ -1,10 +1,8 @@
 package services
 
 import (
-	"crypto/rand"
 	"errors"
 	"fmt"
-	"math/big"
 	"strings"
 	"time"
 
@@ -13,6 +11,7 @@ import (
 	"github.com/iqmalr-pedia/go-product/internal/dto/response"
 	"github.com/iqmalr-pedia/go-product/internal/models"
 	"github.com/iqmalr-pedia/go-product/internal/repositories"
+	"github.com/iqmalr-pedia/go-product/internal/utils"
 	_ "gorm.io/gorm"
 )
 
@@ -47,7 +46,7 @@ func NewProductService(productRepo repositories.ProductRepository, categoryRepo 
 }
 
 func (s *productService) CreateProduct(req *request.CreateProductRequest) (*response.ProductResponse, error) {
-	vendor, err := s.vendorService.GetVendorByID(req.VendorID)
+	_, err := s.vendorService.GetVendorByID(req.VendorID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vendor information: %w", err)
 	}
@@ -95,9 +94,7 @@ func (s *productService) CreateProduct(req *request.CreateProductRequest) (*resp
 		IsFeatured:        isFeatured,
 	}
 
-	now := time.Now()
-	product.Slug = generateProductSlug(req.Name, vendor.Name, now)
-	product.SKU = generateSKU(req.VendorID, req.Name)
+	product.SKU = utils.GenerateSKU(req.VendorID, req.Name)
 
 	if len(req.CategoryIDs) > 0 {
 		for _, categoryID := range req.CategoryIDs {
@@ -155,11 +152,6 @@ func (s *productService) UpdateProduct(id uint, req *request.UpdateProductReques
 	product, err := s.productRepo.GetByID(id)
 	if err != nil {
 		return nil, err
-	}
-
-	vendor, err := s.vendorService.GetVendorByID(product.VendorID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get vendor information: %w", err)
 	}
 
 	nameUpdated := false
@@ -242,8 +234,8 @@ func (s *productService) UpdateProduct(id uint, req *request.UpdateProductReques
 	}
 
 	if nameUpdated {
-		product.Slug = generateProductSlug(product.Name, vendor.Name, product.CreatedAt)
-		product.SKU = generateSKU(product.VendorID, product.Name)
+		shortID := strings.Split(product.UUID.String(), "-")[0]
+		product.Slug = utils.GenerateSlug(product.Name, shortID)
 	}
 
 	if req.CategoryIDs != nil {
@@ -455,19 +447,14 @@ func (s *productService) toProductDetailResponse(product *models.Product) (*resp
 	}
 
 	var images []response.ProductImageResponse
-	var primaryImage *response.ProductImageResponse
 	for _, image := range product.Images {
-		img := response.ProductImageResponse{
+		images = append(images, response.ProductImageResponse{
 			ID:        image.ID,
 			ImageURL:  image.ImageURL,
 			AltText:   image.AltText,
 			SortOrder: image.SortOrder,
 			IsPrimary: image.IsPrimary,
-		}
-		images = append(images, img)
-		if img.IsPrimary {
-			primaryImage = &img
-		}
+		})
 	}
 
 	var variants []response.ProductVariantResponse
@@ -564,59 +551,3 @@ func (s *productService) toProductListItemResponse(product *models.Product) *res
 	}
 }
 
-func generateProductSlug(productName, vendorName string, createdAt time.Time) string {
-	combined := fmt.Sprintf("%s %s %s", productName, vendorName, createdAt.Format("20060102"))
-
-	slug := strings.ToLower(combined)
-
-	slug = strings.ReplaceAll(slug, " ", "-")
-	slug = strings.ReplaceAll(slug, "_", "-")
-
-	var result strings.Builder
-	for _, r := range slug {
-		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
-			result.WriteRune(r)
-		}
-	}
-
-	finalSlug := strings.ReplaceAll(result.String(), "--", "-")
-
-	if strings.HasSuffix(finalSlug, "-") {
-		finalSlug = finalSlug[:len(finalSlug)-1]
-	}
-
-	return finalSlug
-}
-
-func generateSKU(vendorID uint, productName string) string {
-	now := time.Now()
-
-	vendorPrefix := fmt.Sprintf("V%03d", vendorID)
-
-	productName = strings.ReplaceAll(productName, " ", "")
-	productPrefix := ""
-	if len(productName) >= 3 {
-		productPrefix = strings.ToUpper(productName[:3])
-	} else {
-		productPrefix = strings.ToUpper(productName)
-		for len(productPrefix) < 3 {
-			productPrefix += "X"
-		}
-	}
-
-	dateComponent := now.Format("060102")
-
-	randomNum, _ := rand.Int(rand.Reader, big.NewInt(10000))
-	randomComponent := fmt.Sprintf("%04d", randomNum.Int64())
-
-	sku := fmt.Sprintf("%s-%s-%s-%s", vendorPrefix, productPrefix, dateComponent, randomComponent)
-
-	return sku
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}

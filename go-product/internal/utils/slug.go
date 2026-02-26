@@ -21,6 +21,7 @@ func GenerateSlug(name string, uniqueID string) string {
 	slug = strings.Trim(slug, "-")
 
 	if uniqueID != "" {
+		uniqueID = strings.ToLower(uniqueID)
 		if len(uniqueID) > 8 {
 			uniqueID = uniqueID[:8]
 		}

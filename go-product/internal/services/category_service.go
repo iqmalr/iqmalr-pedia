@@ -3,7 +3,6 @@ package services
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/iqmalr-pedia/go-product/internal/dto/request"
 	"github.com/iqmalr-pedia/go-product/internal/dto/response"
@@ -30,8 +29,6 @@ func NewCategoryService(categoryRepo repositories.CategoryRepository) CategorySe
 }
 
 func (s *categoryService) CreateCategory(req *request.CreateCategoryRequest) (*response.CategoryResponse, error) {
-	slug := generateCategorySlug(req.Name)
-
 	isActive := true
 	if req.IsActive != nil {
 		isActive = *req.IsActive
@@ -56,7 +53,6 @@ func (s *categoryService) CreateCategory(req *request.CreateCategoryRequest) (*r
 	category := &models.Category{
 		ParentID:  req.ParentID,
 		Name:      req.Name,
-		Slug:      slug,
 		Desc:      req.Desc,
 		Icon:      req.Icon,
 		ImageURL:  req.ImageURL,
@@ -112,7 +108,6 @@ func (s *categoryService) UpdateCategory(id uint, req *request.UpdateCategoryReq
 
 	if req.Name != "" {
 		category.Name = req.Name
-		category.Slug = generateCategorySlug(req.Name)
 	}
 
 	if req.Desc != "" {
@@ -250,17 +245,3 @@ func (s *categoryService) toCategoryTreeResponse(category *models.Category) *res
 	return resp
 }
 
-func generateCategorySlug(name string) string {
-	slug := strings.ToLower(name)
-	slug = strings.ReplaceAll(slug, " ", "-")
-	slug = strings.ReplaceAll(slug, "_", "-")
-
-	var result strings.Builder
-	for _, r := range slug {
-		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
-			result.WriteRune(r)
-		}
-	}
-
-	return result.String()
-}

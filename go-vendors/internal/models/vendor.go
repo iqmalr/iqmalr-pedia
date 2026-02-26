@@ -1,9 +1,11 @@
 package models
 
 import (
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/iqmalr-pedia/go-vendors/internal/utils"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
@@ -38,6 +40,17 @@ type Vendor struct {
 	CreatedAt     time.Time      `json:"created_at"`
 	UpdatedAt     time.Time      `json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `json:"-" gorm:"index"`
+}
+
+func (v *Vendor) BeforeCreate(tx *gorm.DB) error {
+	if v.UUID == uuid.Nil {
+		v.UUID = uuid.New()
+	}
+	if v.Slug == "" {
+		shortID := strings.Split(v.UUID.String(), "-")[0]
+		v.Slug = utils.GenerateSlug(v.Name, shortID)
+	}
+	return nil
 }
 
 type VendorUser struct {

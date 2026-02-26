@@ -1,9 +1,11 @@
 package models
 
 import (
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/iqmalr-pedia/go-product/internal/utils"
 	"gorm.io/gorm"
 )
 
@@ -28,8 +30,12 @@ type Category struct {
 }
 
 func (c *Category) BeforeCreate(tx *gorm.DB) error {
+	if c.UUID == uuid.Nil {
+		c.UUID = uuid.New()
+	}
 	if c.Slug == "" {
-		c.Slug = c.Name
+		shortID := strings.Split(c.UUID.String(), "-")[0]
+		c.Slug = utils.GenerateSlug(c.Name, shortID)
 	}
 	return nil
 }

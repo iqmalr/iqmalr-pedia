@@ -1,9 +1,11 @@
 package models
 
 import (
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/iqmalr-pedia/go-product/internal/utils"
 	"gorm.io/gorm"
 )
 
@@ -49,11 +51,15 @@ type Product struct {
 }
 
 func (p *Product) BeforeCreate(tx *gorm.DB) error {
+	if p.UUID == uuid.Nil {
+		p.UUID = uuid.New()
+	}
 	if p.Slug == "" {
-		p.Slug = generateSlug(p.Name)
+		shortID := strings.Split(p.UUID.String(), "-")[0]
+		p.Slug = utils.GenerateSlug(p.Name, shortID)
 	}
 	if p.SKU == "" {
-		p.SKU = generateSKU(p.Name)
+		p.SKU = utils.GenerateSKU(p.VendorID, p.Name)
 	}
 	return nil
 }
@@ -112,16 +118,4 @@ type Vendor struct {
 type ProductCategory struct {
 	ProductID  uint `json:"product_id" gorm:"primaryKey"`
 	CategoryID uint `json:"category_id" gorm:"primaryKey"`
-}
-
-func generateSlug(name string) string {
-	// Implementation of slug generation
-	// This is a placeholder, you should implement a proper slug generation
-	return name
-}
-
-func generateSKU(name string) string {
-	// Implementation of SKU generation
-	// This is a placeholder, you should implement a proper SKU generation
-	return name
 }

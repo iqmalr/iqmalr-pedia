@@ -5,32 +5,26 @@ import (
 	"fmt"
 	"log"
 	"mime/multipart"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
-	"github.com/iqmalr-pedia/go-product/internal/config"
 )
 
 const (
-	RootFolder     = "iqmalr-pedia"
-	MaxFileSize    = 2 * 1024 * 1024 // 2MB
+	RootFolder  = "iqmalr-pedia"
+	MaxFileSize = 2 * 1024 * 1024 // 2MB
 )
 
 var AllowedImageExts = map[string]bool{
 	".jpg": true, ".jpeg": true, ".png": true, ".webp": true,
 }
 
-type ImageCategory string
-
-const (
-	CategoryProducts ImageCategory = "products"
-)
-
 type CloudinaryClient interface {
-	UploadProductImage(file multipart.File, productID uint) (string, error)
+	UploadAvatar(file multipart.File, userID uint) (string, error)
 	DeleteImage(publicID string) error
 }
 
@@ -40,9 +34,9 @@ type cloudinaryClient struct {
 
 func NewCloudinaryClient() (CloudinaryClient, error) {
 	cld, err := cloudinary.NewFromParams(
-		config.AppConfig.CloudinaryCloudName,
-		config.AppConfig.CloudinaryAPIKey,
-		config.AppConfig.CloudinaryAPISecret,
+		os.Getenv("CLOUDINARY_CLOUD_NAME"),
+		os.Getenv("CLOUDINARY_API_KEY"),
+		os.Getenv("CLOUDINARY_API_SECRET"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Cloudinary: %w", err)
@@ -51,21 +45,21 @@ func NewCloudinaryClient() (CloudinaryClient, error) {
 	return &cloudinaryClient{cld: cld}, nil
 }
 
-func (c *cloudinaryClient) UploadProductImage(file multipart.File, productID uint) (string, error) {
+func (c *cloudinaryClient) UploadAvatar(file multipart.File, userID uint) (string, error) {
 	ctx := context.Background()
-	publicID := BuildPublicID(CategoryProducts, "product", productID)
-	folder := fmt.Sprintf("%s/%s", RootFolder, CategoryProducts)
+	publicID := fmt.Sprintf("user-%d-%d", userID, time.Now().Unix())
+	folder := fmt.Sprintf("%s/avatars", RootFolder)
 
 	result, err := c.cld.Upload.Upload(ctx, file, uploader.UploadParams{
 		Folder:         folder,
 		PublicID:       publicID,
 		Overwrite:      boolPtr(false),
 		UniqueFilename: boolPtr(false),
-		Transformation: "w_800,h_800,c_fill,g_auto,q_auto,f_webp",
+		Transformation: "w_500,h_500,c_fill,g_auto,q_auto,f_webp",
 	})
 	if err != nil {
-		log.Printf("Cloudinary upload error for product %d: %v", productID, err)
-		return "", fmt.Errorf("failed to upload image: %w", err)
+		log.Printf("Cloudinary upload error for user %d: %v", userID, err)
+		return "", fmt.Errorf("failed to upload avatar: %w", err)
 	}
 
 	return result.SecureURL, nil
@@ -83,10 +77,6 @@ func (c *cloudinaryClient) DeleteImage(publicID string) error {
 	}
 
 	return nil
-}
-
-func BuildPublicID(category ImageCategory, entity string, id uint) string {
-	return fmt.Sprintf("%s-%d-%d", entity, id, time.Now().Unix())
 }
 
 func ValidateImageFile(header *multipart.FileHeader) error {

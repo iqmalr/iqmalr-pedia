@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"mime/multipart"
 	"net/http"
 
+	"github.com/iqmalr-pedia/go-vendors/internal/clients"
 	"github.com/iqmalr-pedia/go-vendors/internal/config"
 	"github.com/iqmalr-pedia/go-vendors/internal/dto/request"
 	"github.com/iqmalr-pedia/go-vendors/internal/dto/response"
@@ -240,6 +242,86 @@ func (s *VendorService) ListVendors(req *request.ListVendorsRequest) (*response.
 			Limit:      req.Limit,
 		},
 	}, nil
+}
+
+func (s *VendorService) UploadLogo(userID, vendorID uint, userRole string, file *multipart.FileHeader, cldClient clients.CloudinaryClient) (*response.VendorResponse, error) {
+	if err := clients.ValidateImageFile(file); err != nil {
+		return nil, err
+	}
+
+	vendor, err := s.vendorRepo.FindByID(vendorID)
+	if err != nil {
+		return nil, errors.New("vendor not found")
+	}
+
+	if vendor.OwnerID != userID && userRole != "admin" {
+		return nil, errors.New("unauthorized: you are not the owner or an admin")
+	}
+
+	if vendor.LogoUrl != "" {
+		oldPublicID := clients.ExtractPublicIDFromURL(vendor.LogoUrl)
+		if oldPublicID != "" {
+			_ = cldClient.DeleteImage(oldPublicID)
+		}
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		return nil, fmt.Errorf("failed to open uploaded file: %w", err)
+	}
+	defer src.Close()
+
+	logoURL, err := cldClient.UploadVendorLogo(src, vendorID)
+	if err != nil {
+		return nil, err
+	}
+
+	vendor.LogoUrl = logoURL
+	if err := s.vendorRepo.Update(vendor); err != nil {
+		return nil, err
+	}
+
+	return s.mapToVendorResponse(vendor), nil
+}
+
+func (s *VendorService) UploadBanner(userID, vendorID uint, userRole string, file *multipart.FileHeader, cldClient clients.CloudinaryClient) (*response.VendorResponse, error) {
+	if err := clients.ValidateImageFile(file); err != nil {
+		return nil, err
+	}
+
+	vendor, err := s.vendorRepo.FindByID(vendorID)
+	if err != nil {
+		return nil, errors.New("vendor not found")
+	}
+
+	if vendor.OwnerID != userID && userRole != "admin" {
+		return nil, errors.New("unauthorized: you are not the owner or an admin")
+	}
+
+	if vendor.BannerUrl != "" {
+		oldPublicID := clients.ExtractPublicIDFromURL(vendor.BannerUrl)
+		if oldPublicID != "" {
+			_ = cldClient.DeleteImage(oldPublicID)
+		}
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		return nil, fmt.Errorf("failed to open uploaded file: %w", err)
+	}
+	defer src.Close()
+
+	bannerURL, err := cldClient.UploadVendorBanner(src, vendorID)
+	if err != nil {
+		return nil, err
+	}
+
+	vendor.BannerUrl = bannerURL
+	if err := s.vendorRepo.Update(vendor); err != nil {
+		return nil, err
+	}
+
+	return s.mapToVendorResponse(vendor), nil
 }
 
 func (s *VendorService) mapToVendorResponse(vendor *models.Vendor) *response.VendorResponse {

@@ -3,9 +3,6 @@ package services
 import (
 	"fmt"
 	"mime/multipart"
-	"path/filepath"
-	"strings"
-	"time"
 
 	"github.com/iqmalr-pedia/go-product/internal/clients"
 	"github.com/iqmalr-pedia/go-product/internal/dto/request"
@@ -42,14 +39,8 @@ func (s *imageService) UploadImage(productID uint, file *multipart.FileHeader, a
 		return nil, err
 	}
 
-	ext := strings.ToLower(filepath.Ext(file.Filename))
-	allowedExts := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true}
-	if !allowedExts[ext] {
-		return nil, fmt.Errorf("file type '%s' is not allowed, use jpg, jpeg, png, gif, or webp", ext)
-	}
-
-	if file.Size > 2*1024*1024 {
-		return nil, fmt.Errorf("file size exceeds maximum limit of 2MB")
+	if err := clients.ValidateImageFile(file); err != nil {
+		return nil, err
 	}
 
 	src, err := file.Open()
@@ -58,10 +49,7 @@ func (s *imageService) UploadImage(productID uint, file *multipart.FileHeader, a
 	}
 	defer src.Close()
 
-	folder := fmt.Sprintf("products/%d", productID)
-	publicID := fmt.Sprintf("product_%d_%d", productID, time.Now().UnixNano())
-
-	imageURL, err := s.cloudinaryClient.UploadImage(src, folder, publicID)
+	imageURL, err := s.cloudinaryClient.UploadProductImage(src, productID)
 	if err != nil {
 		return nil, err
 	}
@@ -79,9 +67,10 @@ func (s *imageService) UploadImage(productID uint, file *multipart.FileHeader, a
 	}
 
 	if err := s.imageRepo.Create(image); err != nil {
-		// best-effort cleanup on Cloudinary
-		fullPublicID := folder + "/" + publicID
-		_ = s.cloudinaryClient.DeleteImage(fullPublicID)
+		publicID := clients.ExtractPublicIDFromURL(imageURL)
+		if publicID != "" {
+			_ = s.cloudinaryClient.DeleteImage(publicID)
+		}
 		return nil, err
 	}
 
@@ -160,7 +149,7 @@ func (s *imageService) DeleteImage(productID, imageID uint) error {
 	}
 
 	if image.ImageURL != "" {
-		publicID := extractPublicIDFromURL(image.ImageURL)
+		publicID := clients.ExtractPublicIDFromURL(image.ImageURL)
 		if publicID != "" {
 			_ = s.cloudinaryClient.DeleteImage(publicID)
 		}
@@ -203,30 +192,4 @@ func (s *imageService) toImageDetailResponse(img *models.ProductImage) *response
 		CreatedAt: img.CreatedAt,
 		UpdatedAt: img.UpdatedAt,
 	}
-}
-
-// extractPublicIDFromURL extracts Cloudinary public_id from a secure URL.
-// e.g. https://res.cloudinary.com/xxx/image/upload/v123/products/1/product_1_123.jpg
-// returns "products/1/product_1_123"
-func extractPublicIDFromURL(url string) string {
-	idx := strings.Index(url, "/upload/")
-	if idx == -1 {
-		return ""
-	}
-	path := url[idx+len("/upload/"):]
-
-	// skip version segment (v1234567890/)
-	if strings.HasPrefix(path, "v") {
-		if slashIdx := strings.Index(path, "/"); slashIdx != -1 {
-			path = path[slashIdx+1:]
-		}
-	}
-
-	// remove file extension
-	ext := filepath.Ext(path)
-	if ext != "" {
-		path = path[:len(path)-len(ext)]
-	}
-
-	return path
 }

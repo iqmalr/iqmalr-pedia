@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
+	"github.com/iqmalr-pedia/go-vendors/internal/clients"
 	"github.com/iqmalr-pedia/go-vendors/internal/config"
 	"github.com/iqmalr-pedia/go-vendors/internal/handlers"
 	"github.com/iqmalr-pedia/go-vendors/internal/middleware"
@@ -21,10 +22,15 @@ func main() {
 	vendorAccountBankRepo := repositories.NewVendorAccountBankRepository(database.GetDB())
 	httpClient := utils.NewHTTPClient()
 
+	cloudinaryClient, err := clients.NewCloudinaryClient()
+	if err != nil {
+		log.Fatal("Failed to initialize Cloudinary client: ", err)
+	}
+
 	vendorService := services.NewVendorService(vendorRepo, httpClient)
 	vendorAccountBankService := services.NewVendorAccountBankService(vendorRepo, vendorAccountBankRepo)
 
-	vendorHandler := handlers.NewVendorHandler(vendorService)
+	vendorHandler := handlers.NewVendorHandler(vendorService, cloudinaryClient)
 	applicationHandler := handlers.NewVendorApplicationHandler(vendorService)
 	teamHandler := handlers.NewVendorTeamHandler(vendorService)
 	vendorAccountBankHandler := handlers.NewVendorBankAccountHandler(vendorAccountBankService, vendorService)

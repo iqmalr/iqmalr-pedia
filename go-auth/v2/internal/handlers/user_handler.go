@@ -24,6 +24,28 @@ func NewUserHandler(userService *services.UserService) *UserHandler {
 	return &UserHandler{userService: userService}
 }
 
+func (h *UserHandler) UploadAvatar(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File is required"})
+		return
+	}
+
+	result, err := h.userService.UploadAvatar(userID.(uint), file)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 func (h *UserHandler) GetProfile(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {

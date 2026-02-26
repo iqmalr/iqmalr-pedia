@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
+	"github.com/iqmalr-pedia/go-auth/v2/internal/clients"
 	"github.com/iqmalr-pedia/go-auth/v2/internal/handlers"
 	"github.com/iqmalr-pedia/go-auth/v2/internal/middleware"
 	"github.com/iqmalr-pedia/go-auth/v2/internal/repositories"
@@ -20,9 +21,13 @@ func main() {
 	cacheRepo := repositories.NewCacheRepository(database.GetRedis())
 	eventRepo := repositories.NewEventRepository(database.GetRedis())
 
+	cloudinaryClient, err := clients.NewCloudinaryClient()
+	if err != nil {
+		log.Fatal("Failed to initialize Cloudinary client: ", err)
+	}
+
 	authService := services.NewAuthService(userRepo)
-	//userService := services.NewUserService(userRepo)
-	userService := services.NewUserService(userRepo, cacheRepo, eventRepo)
+	userService := services.NewUserService(userRepo, cacheRepo, eventRepo, cloudinaryClient)
 	addressService := services.NewAddressService(addressRepo)
 
 	authHandler := handlers.NewAuthHandler(authService)
@@ -64,6 +69,7 @@ func main() {
 		{
 			users.GET("/me", userHandler.GetProfile)
 			users.PUT("/me", userHandler.UpdateProfile)
+			users.PUT("/me/avatar", userHandler.UploadAvatar)
 			users.PUT("/me/password", userHandler.ChangePassword)
 
 			admin := users.Group("/")

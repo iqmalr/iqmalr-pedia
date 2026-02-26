@@ -8,7 +8,10 @@ import (
 	"log"
 	"time"
 
+	"mime/multipart"
+
 	"github.com/google/uuid"
+	"github.com/iqmalr-pedia/go-auth/v2/internal/clients"
 	"github.com/iqmalr-pedia/go-auth/v2/internal/dto/request"
 	"github.com/iqmalr-pedia/go-auth/v2/internal/dto/response"
 	"github.com/iqmalr-pedia/go-auth/v2/internal/models"
@@ -25,16 +28,18 @@ func NewAuthService(userRepo repositories.UserRepositoryInterface) *AuthService 
 }
 
 type UserService struct {
-	userRepo  repositories.UserRepositoryInterface
-	cacheRepo repositories.CacheRepositoryInterface
-	eventRepo repositories.EventRepositoryInterface
+	userRepo         repositories.UserRepositoryInterface
+	cacheRepo        repositories.CacheRepositoryInterface
+	eventRepo        repositories.EventRepositoryInterface
+	cloudinaryClient clients.CloudinaryClient
 }
 
-func NewUserService(userRepo repositories.UserRepositoryInterface, cacheRepo repositories.CacheRepositoryInterface, eventRepo repositories.EventRepositoryInterface) *UserService {
+func NewUserService(userRepo repositories.UserRepositoryInterface, cacheRepo repositories.CacheRepositoryInterface, eventRepo repositories.EventRepositoryInterface, cloudinaryClient clients.CloudinaryClient) *UserService {
 	return &UserService{
-		userRepo:  userRepo,
-		cacheRepo: cacheRepo,
-		eventRepo: eventRepo,
+		userRepo:         userRepo,
+		cacheRepo:        cacheRepo,
+		eventRepo:        eventRepo,
+		cloudinaryClient: cloudinaryClient,
 	}
 }
 
@@ -337,6 +342,41 @@ func (s *UserService) UpdateProfile(userID uint, req *request.UpdateProfileReque
 	}
 
 	if err := s.userRepo.UpdateProfile(userID, updates); err != nil {
+		return nil, err
+	}
+
+	return s.GetProfile(userID)
+}
+
+func (s *UserService) UploadAvatar(userID uint, file *multipart.FileHeader) (*response.UserProfileResponse, error) {
+	if err := clients.ValidateImageFile(file); err != nil {
+		return nil, err
+	}
+
+	user, err := s.userRepo.FindUserByID(userID)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+
+	if user.AvatarUrl != "" {
+		oldPublicID := clients.ExtractPublicIDFromURL(user.AvatarUrl)
+		if oldPublicID != "" {
+			_ = s.cloudinaryClient.DeleteImage(oldPublicID)
+		}
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		return nil, fmt.Errorf("failed to open uploaded file: %w", err)
+	}
+	defer src.Close()
+
+	avatarURL, err := s.cloudinaryClient.UploadAvatar(src, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.userRepo.UpdateProfile(userID, map[string]interface{}{"avatar_url": avatarURL}); err != nil {
 		return nil, err
 	}
 

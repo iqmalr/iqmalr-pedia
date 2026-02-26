@@ -5,16 +5,21 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/iqmalr-pedia/go-vendors/internal/clients"
 	"github.com/iqmalr-pedia/go-vendors/internal/dto/request"
 	"github.com/iqmalr-pedia/go-vendors/internal/services"
 )
 
 type VendorHandler struct {
-	vendorService *services.VendorService
+	vendorService    *services.VendorService
+	cloudinaryClient clients.CloudinaryClient
 }
 
-func NewVendorHandler(vendorService *services.VendorService) *VendorHandler {
-	return &VendorHandler{vendorService: vendorService}
+func NewVendorHandler(vendorService *services.VendorService, cloudinaryClient clients.CloudinaryClient) *VendorHandler {
+	return &VendorHandler{
+		vendorService:    vendorService,
+		cloudinaryClient: cloudinaryClient,
+	}
 }
 
 func (h *VendorHandler) CreateVendor(c *gin.Context) {
@@ -152,11 +157,63 @@ func (h *VendorHandler) ListVendors(c *gin.Context) {
 }
 
 func (h *VendorHandler) UploadLogo(c *gin.Context) {
-	// TODO: Implement file upload logic
-	c.JSON(http.StatusOK, gin.H{"message": "Logo upload not implemented yet"})
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	userRole, _ := c.Get("role")
+
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid vendor ID"})
+		return
+	}
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File is required"})
+		return
+	}
+
+	result, err := h.vendorService.UploadLogo(userID.(uint), uint(id), userRole.(string), file, h.cloudinaryClient)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
 }
 
 func (h *VendorHandler) UploadBanner(c *gin.Context) {
-	// TODO: Implement file upload logic
-	c.JSON(http.StatusOK, gin.H{"message": "Banner upload not implemented yet"})
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	userRole, _ := c.Get("role")
+
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid vendor ID"})
+		return
+	}
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File is required"})
+		return
+	}
+
+	result, err := h.vendorService.UploadBanner(userID.(uint), uint(id), userRole.(string), file, h.cloudinaryClient)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
 }

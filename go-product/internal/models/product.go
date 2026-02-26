@@ -82,6 +82,27 @@ type ProductVariant struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type ProductReview struct {
+	ID                 uint      `json:"id" gorm:"primaryKey"`
+	ProductID          uint      `json:"product_id" gorm:"not null;index"`
+	UserID             uint      `json:"user_id" gorm:"not null;index"`
+	OrderItemID        *uint     `json:"order_item_id" gorm:"index"`
+	Rating             int       `json:"rating" gorm:"not null"`
+	Title              string    `json:"title" gorm:"size:255"`
+	Comment            string    `json:"comment" gorm:"type:text"`
+	IsVerifiedPurchase bool      `json:"is_verified_purchase" gorm:"default:false"`
+	IsApproved         bool      `json:"is_approved" gorm:"default:false"`
+	HelpfulCount       int       `json:"helpful_count" gorm:"default:0"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+}
+
+type ReviewHelpful struct {
+	ID       uint `json:"id" gorm:"primaryKey"`
+	ReviewID uint `json:"review_id" gorm:"not null;index;uniqueIndex:idx_review_user"`
+	UserID   uint `json:"user_id" gorm:"not null;index;uniqueIndex:idx_review_user"`
+}
+
 type Vendor struct {
 	ID   uint   `json:"id" gorm:"primaryKey"`
 	Name string `json:"name" gorm:"not null"`

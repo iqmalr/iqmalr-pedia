@@ -44,6 +44,8 @@ func ConnectDB() {
 		&models.Product{},
 		&models.ProductImage{},
 		&models.ProductVariant{},
+		&models.ProductReview{},
+		&models.ReviewHelpful{},
 		&models.Vendor{},
 		&models.ProductCategory{},
 	)

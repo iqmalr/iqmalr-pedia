@@ -8,16 +8,18 @@ import (
 )
 
 type AppConfigType struct {
-	Port               string
-	VendorServiceURL   string
+	Port                string
+	VendorServiceURL    string
+	AuthServiceURL      string
 	CloudinaryCloudName string
 	CloudinaryAPIKey    string
 	CloudinaryAPISecret string
 }
 
 var AppConfig = AppConfigType{
-	Port:               getEnv("PORT", "8084"),
-	VendorServiceURL:   getEnv("VENDOR_SERVICE_URL", "http://localhost:8081/api/v1"),
+	Port:                getEnv("PORT", "8084"),
+	VendorServiceURL:    getEnv("VENDOR_SERVICE_URL", "http://localhost:8081/api/v1"),
+	AuthServiceURL:      getEnv("AUTH_SERVICE_URL", "http://localhost:8082/api/v2"),
 	CloudinaryCloudName: getEnv("CLOUDINARY_CLOUD_NAME", ""),
 	CloudinaryAPIKey:    getEnv("CLOUDINARY_API_KEY", ""),
 	CloudinaryAPISecret: getEnv("CLOUDINARY_API_SECRET", ""),

@@ -29,7 +29,9 @@ func main() {
 	productRepo := repositories.NewProductRepository(database.GetDB())
 	variantRepo := repositories.NewVariantRepository(database.GetDB())
 	imageRepo := repositories.NewImageRepository(database.GetDB())
+	reviewRepo := repositories.NewReviewRepository(database.GetDB())
 	vendorClient := clients.NewVendorClient()
+	authClient := clients.NewAuthClient()
 	vendorService := services.NewVendorService(vendorClient)
 
 	cloudinaryClient, err := clients.NewCloudinaryClient()
@@ -41,11 +43,13 @@ func main() {
 	productService := services.NewProductService(productRepo, categoryRepo, vendorService)
 	variantService := services.NewVariantService(variantRepo, productRepo)
 	imageService := services.NewImageService(imageRepo, productRepo, cloudinaryClient)
+	reviewService := services.NewReviewService(reviewRepo, productRepo, authClient)
 
 	categoryHandler := handlers.NewCategoryHandler(categoryService)
 	productHandler := handlers.NewProductHandler(productService)
 	variantHandler := handlers.NewVariantHandler(variantService)
 	imageHandler := handlers.NewImageHandler(imageService)
+	reviewHandler := handlers.NewReviewHandler(reviewService)
 
 	router := gin.Default()
 
@@ -76,6 +80,7 @@ func main() {
 
 			products.GET("/:id/variants", variantHandler.GetVariants)
 			products.GET("/:id/images", imageHandler.GetImages)
+			products.GET("/:id/reviews", reviewHandler.GetReviews)
 
 			auth := products.Group("")
 			auth.Use(middleware.GatewayAuthMiddleware())
@@ -95,10 +100,15 @@ func main() {
 				auth.DELETE("/:id/images/:imageId", imageHandler.DeleteImage)
 				auth.PUT("/:id/images/:imageId/primary", imageHandler.SetPrimaryImage)
 
+				auth.POST("/:id/reviews", reviewHandler.CreateReview)
+				auth.POST("/:id/reviews/:reviewId/helpful", reviewHandler.MarkHelpful)
+
 				admin := auth.Group("")
 				admin.Use(middleware.RoleMiddleware("admin"))
 				{
 					admin.PUT("/:id/status", productHandler.UpdateProductStatus)
+					admin.PUT("/:id/reviews/:reviewId", reviewHandler.UpdateReview)
+					admin.DELETE("/:id/reviews/:reviewId", reviewHandler.DeleteReview)
 				}
 			}
 		}

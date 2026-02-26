@@ -94,35 +94,21 @@ func (s *productService) CreateProduct(req *request.CreateProductRequest) (*resp
 		IsFeatured:        isFeatured,
 	}
 
-	product.SKU = utils.GenerateSKU(req.VendorID, req.Name)
-
 	if len(req.CategoryIDs) > 0 {
+		var categories []models.Category
 		for _, categoryID := range req.CategoryIDs {
-			_, err := s.categoryRepo.GetByID(categoryID)
+			category, err := s.categoryRepo.GetByID(categoryID)
 			if err != nil {
 				return nil, fmt.Errorf("category with ID %d not found", categoryID)
 			}
+			categories = append(categories, *category)
 		}
+		product.Categories = categories
 	}
 
 	err = s.productRepo.Create(product)
 	if err != nil {
 		return nil, err
-	}
-
-	if len(req.CategoryIDs) > 0 {
-		var categories []models.Category
-		for _, categoryID := range req.CategoryIDs {
-			category, _ := s.categoryRepo.GetByID(categoryID)
-			if category != nil {
-				categories = append(categories, *category)
-			}
-		}
-		product.Categories = categories
-		err = s.productRepo.Update(product)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return s.toProductResponse(product), nil
@@ -154,93 +140,69 @@ func (s *productService) UpdateProduct(id uint, req *request.UpdateProductReques
 		return nil, err
 	}
 
-	nameUpdated := false
-
 	if req.Name != "" && req.Name != product.Name {
 		product.Name = req.Name
-		nameUpdated = true
+		shortID := strings.Split(product.UUID.String(), "-")[0]
+		product.Slug = utils.GenerateSlug(product.Name, shortID)
 	}
 
 	if req.Description != "" {
 		product.Description = req.Description
 	}
-
 	if req.ShortDescription != "" {
 		product.ShortDescription = req.ShortDescription
 	}
-
 	if req.Price > 0 {
 		product.Price = req.Price
 	}
-
 	if req.CompareAtPrice > 0 {
 		product.CompareAtPrice = req.CompareAtPrice
 	}
-
 	if req.CostPerItem > 0 {
 		product.CostPerItem = req.CostPerItem
 	}
-
 	if req.Stock >= 0 {
 		product.Stock = req.Stock
 	}
-
 	if req.LowStockThreshold >= 0 {
 		product.LowStockThreshold = req.LowStockThreshold
 	}
-
 	if req.TrackInventory != nil {
 		product.TrackInventory = *req.TrackInventory
 	}
-
 	if req.AllowBackorder != nil {
 		product.AllowBackorder = *req.AllowBackorder
 	}
-
 	if req.Weight > 0 {
 		product.Weight = req.Weight
 	}
-
 	if req.Length > 0 {
 		product.Length = req.Length
 	}
-
 	if req.Width > 0 {
 		product.Width = req.Width
 	}
-
 	if req.Height > 0 {
 		product.Height = req.Height
 	}
-
 	if req.MetaTitle != "" {
 		product.MetaTitle = req.MetaTitle
 	}
-
 	if req.MetaDescription != "" {
 		product.MetaDescription = req.MetaDescription
 	}
-
 	if req.MetaKeywords != "" {
 		product.MetaKeywords = req.MetaKeywords
 	}
-
 	if req.Status != "" {
 		product.Status = req.Status
 	}
-
 	if req.IsFeatured != nil {
 		product.IsFeatured = *req.IsFeatured
 	}
 
-	if nameUpdated {
-		shortID := strings.Split(product.UUID.String(), "-")[0]
-		product.Slug = utils.GenerateSlug(product.Name, shortID)
-	}
-
 	if req.CategoryIDs != nil {
 		product.Categories = []models.Category{}
-
 		for _, categoryID := range req.CategoryIDs {
 			category, err := s.categoryRepo.GetByID(categoryID)
 			if err != nil {
@@ -550,4 +512,3 @@ func (s *productService) toProductListItemResponse(product *models.Product) *res
 		UpdatedAt:      product.UpdatedAt,
 	}
 }
-

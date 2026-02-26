@@ -1,9 +1,20 @@
 package utils
 
-import "strings"
+import (
+	"strings"
+	"unicode"
+
+	"golang.org/x/text/runes"
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
+)
+
+const maxSlugBase = 60
 
 func GenerateSlug(name string, uniqueID string) string {
-	slug := strings.ToLower(name)
+	slug := normalizeUnicode(name)
+
+	slug = strings.ToLower(slug)
 	slug = strings.ReplaceAll(slug, " ", "-")
 
 	var result strings.Builder
@@ -20,13 +31,32 @@ func GenerateSlug(name string, uniqueID string) string {
 
 	slug = strings.Trim(slug, "-")
 
+	if len(slug) > maxSlugBase {
+		slug = slug[:maxSlugBase]
+		slug = strings.TrimRight(slug, "-")
+	}
+
 	if uniqueID != "" {
 		uniqueID = strings.ToLower(uniqueID)
 		if len(uniqueID) > 8 {
 			uniqueID = uniqueID[:8]
 		}
-		slug = slug + "-" + uniqueID
+
+		if slug == "" {
+			slug = uniqueID
+		} else {
+			slug = slug + "-" + uniqueID
+		}
 	}
 
 	return slug
+}
+
+func normalizeUnicode(s string) string {
+	t := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+	result, _, err := transform.String(t, s)
+	if err != nil {
+		return s
+	}
+	return result
 }

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -51,7 +52,7 @@ type Product struct {
 }
 
 func (p *Product) BeforeCreate(tx *gorm.DB) error {
-	if p.UUID == uuid.Nil {
+	if p.UUID == (uuid.UUID{}) {
 		p.UUID = uuid.New()
 	}
 	if p.Slug == "" {
@@ -59,7 +60,29 @@ func (p *Product) BeforeCreate(tx *gorm.DB) error {
 		p.Slug = utils.GenerateSlug(p.Name, shortID)
 	}
 	if p.SKU == "" {
-		p.SKU = utils.GenerateSKU(p.VendorID, p.Name)
+		categoryCode := "GEN"
+		if len(p.Categories) > 0 {
+			categoryCode = p.Categories[0].Name
+		}
+
+		seq, err := NextSKUSeq(tx, p.VendorID)
+		if err != nil {
+			return fmt.Errorf("failed to generate SKU sequence: %w", err)
+		}
+
+		p.SKU = utils.GenerateProductSKU(p.VendorID, categoryCode, seq)
+	}
+	return nil
+}
+
+func (v *ProductVariant) BeforeCreate(tx *gorm.DB) error {
+	if v.SKU == "" {
+		var parentProduct Product
+		if err := tx.Select("sku").First(&parentProduct, v.ProductID).Error; err != nil {
+			return fmt.Errorf("failed to find parent product for variant SKU: %w", err)
+		}
+
+		v.SKU = utils.GenerateVariantSKU(parentProduct.SKU, v.Name)
 	}
 	return nil
 }

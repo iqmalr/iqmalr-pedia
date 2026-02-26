@@ -27,14 +27,25 @@ func main() {
 
 	categoryRepo := repositories.NewCategoryRepository(database.GetDB())
 	productRepo := repositories.NewProductRepository(database.GetDB())
+	variantRepo := repositories.NewVariantRepository(database.GetDB())
+	imageRepo := repositories.NewImageRepository(database.GetDB())
 	vendorClient := clients.NewVendorClient()
 	vendorService := services.NewVendorService(vendorClient)
 
+	cloudinaryClient, err := clients.NewCloudinaryClient()
+	if err != nil {
+		log.Fatal("Failed to initialize Cloudinary client: ", err)
+	}
+
 	categoryService := services.NewCategoryService(categoryRepo)
 	productService := services.NewProductService(productRepo, categoryRepo, vendorService)
+	variantService := services.NewVariantService(variantRepo, productRepo)
+	imageService := services.NewImageService(imageRepo, productRepo, cloudinaryClient)
 
 	categoryHandler := handlers.NewCategoryHandler(categoryService)
 	productHandler := handlers.NewProductHandler(productService)
+	variantHandler := handlers.NewVariantHandler(variantService)
+	imageHandler := handlers.NewImageHandler(imageService)
 
 	router := gin.Default()
 
@@ -63,6 +74,9 @@ func main() {
 			products.GET("/:id", productHandler.GetProductByID)
 			products.GET("/slug/:slug", productHandler.GetProductBySlug)
 
+			products.GET("/:id/variants", variantHandler.GetVariants)
+			products.GET("/:id/images", imageHandler.GetImages)
+
 			auth := products.Group("")
 			auth.Use(middleware.GatewayAuthMiddleware())
 			{
@@ -71,6 +85,15 @@ func main() {
 				auth.DELETE("/:id", productHandler.DeleteProduct)
 				auth.PUT("/:id/publish", productHandler.PublishProduct)
 				auth.PUT("/:id/unpublish", productHandler.UnpublishProduct)
+
+				auth.POST("/:id/variants", variantHandler.CreateVariant)
+				auth.PUT("/:id/variants/:variantId", variantHandler.UpdateVariant)
+				auth.DELETE("/:id/variants/:variantId", variantHandler.DeleteVariant)
+
+				auth.POST("/:id/images", imageHandler.UploadImage)
+				auth.PUT("/:id/images/:imageId", imageHandler.UpdateImage)
+				auth.DELETE("/:id/images/:imageId", imageHandler.DeleteImage)
+				auth.PUT("/:id/images/:imageId/primary", imageHandler.SetPrimaryImage)
 
 				admin := auth.Group("")
 				admin.Use(middleware.RoleMiddleware("admin"))

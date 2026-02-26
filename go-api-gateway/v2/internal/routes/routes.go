@@ -46,21 +46,43 @@ func SetupRoutes(
 					authGroup.GET("/me", gatewayHandler.AuthProxyV2)
 				}
 			}
+
 			users := v2.Group("/users")
 			users.Use(middleware.AuthMiddleware())
 			{
-				//users.Any("/me/*path", gatewayHandler.UserProxyV2)
+				me := users.Group("/me")
+				{
+					me.GET("", gatewayHandler.AuthProxyV2)
+					me.PUT("", gatewayHandler.AuthProxyV2)
+					me.PUT("/avatar", gatewayHandler.AuthProxyV2)
+					me.PUT("/password", gatewayHandler.AuthProxyV2)
+
+					addresses := me.Group("/addresses")
+					{
+						addresses.GET("/", gatewayHandler.AuthProxyV2)
+						addresses.POST("/", gatewayHandler.AuthProxyV2)
+						addresses.GET("/:id", gatewayHandler.AuthProxyV2)
+						addresses.PUT("/:id", gatewayHandler.AuthProxyV2)
+						addresses.DELETE("/:id", gatewayHandler.AuthProxyV2)
+						addresses.PUT("/:id/default", gatewayHandler.AuthProxyV2)
+					}
+				}
 
 				admin := users.Group("")
 				admin.Use(middleware.RoleMiddleware("admin"))
 				{
-					admin.Any("*path", gatewayHandler.UserProxyV2)
+					admin.GET("", gatewayHandler.AuthProxyV2)
+					admin.GET("/:id", gatewayHandler.AuthProxyV2)
+					admin.PUT("/:id", gatewayHandler.AuthProxyV2)
+					admin.PATCH("/:id", gatewayHandler.AuthProxyV2)
 				}
 			}
+
 			services := v2.Group("/services")
 			{
 				services.Any("/:service/*path", gatewayHandler.ProxyRequest)
 			}
+
 			vendors := v2.Group("/vendors")
 			vendors.Use(middleware.AuthMiddleware())
 			{
@@ -68,18 +90,63 @@ func SetupRoutes(
 				vendors.Any("/*path", gatewayHandler.VendorProxyV1)
 				vendors.POST("", gatewayHandler.VendorProxyV1)
 			}
+
 			admin := v2.Group("/admin")
 			admin.Use(middleware.AuthMiddleware(), middleware.RoleMiddleware("admin"))
 			{
+				admin.GET("/dashboard", gatewayHandler.AuthProxyV2)
+				admin.GET("/events", gatewayHandler.AuthProxyV2)
 				admin.PUT("/vendor-applications/:id/approve", gatewayHandler.VendorProxyV1)
 				admin.PUT("/vendor-applications/:id/reject", gatewayHandler.VendorProxyV1)
-				admin.GET("/events", gatewayHandler.UserProxyV2)
+				admin.PUT("/vendors/:id/status", gatewayHandler.VendorProxyV1)
 			}
-			products := v2.Group("/products")
-			products.Use(middleware.AuthMiddleware())
+
+			vendor := v2.Group("/vendor")
+			vendor.Use(middleware.AuthMiddleware(), middleware.RoleMiddleware("vendor", "admin"))
 			{
-				products.Any("/*path", gatewayHandler.ProductProxyV1)
+				vendor.GET("/dashboard", gatewayHandler.AuthProxyV2)
 			}
+
+			products := v2.Group("/products")
+			{
+				products.GET("", gatewayHandler.ProductProxyV1)
+				products.GET("/:id", gatewayHandler.ProductProxyV1)
+				products.GET("/slug/:slug", gatewayHandler.ProductProxyV1)
+				products.GET("/:id/variants", gatewayHandler.ProductProxyV1)
+				products.GET("/:id/images", gatewayHandler.ProductProxyV1)
+				products.GET("/:id/reviews", gatewayHandler.ProductProxyV1)
+
+				authenticated := products.Group("")
+				authenticated.Use(middleware.AuthMiddleware())
+				{
+					authenticated.POST("", gatewayHandler.ProductProxyV1)
+					authenticated.PUT("/:id", gatewayHandler.ProductProxyV1)
+					authenticated.DELETE("/:id", gatewayHandler.ProductProxyV1)
+					authenticated.PUT("/:id/publish", gatewayHandler.ProductProxyV1)
+					authenticated.PUT("/:id/unpublish", gatewayHandler.ProductProxyV1)
+
+					authenticated.POST("/:id/variants", gatewayHandler.ProductProxyV1)
+					authenticated.PUT("/:id/variants/:variantId", gatewayHandler.ProductProxyV1)
+					authenticated.DELETE("/:id/variants/:variantId", gatewayHandler.ProductProxyV1)
+
+					authenticated.POST("/:id/images", gatewayHandler.ProductProxyV1)
+					authenticated.PUT("/:id/images/:imageId", gatewayHandler.ProductProxyV1)
+					authenticated.DELETE("/:id/images/:imageId", gatewayHandler.ProductProxyV1)
+					authenticated.PUT("/:id/images/:imageId/primary", gatewayHandler.ProductProxyV1)
+
+					authenticated.POST("/:id/reviews", gatewayHandler.ProductProxyV1)
+					authenticated.POST("/:id/reviews/:reviewId/helpful", gatewayHandler.ProductProxyV1)
+
+					productAdmin := authenticated.Group("")
+					productAdmin.Use(middleware.RoleMiddleware("admin"))
+					{
+						productAdmin.PUT("/:id/status", gatewayHandler.ProductProxyV1)
+						productAdmin.PUT("/:id/reviews/:reviewId", gatewayHandler.ProductProxyV1)
+						productAdmin.DELETE("/:id/reviews/:reviewId", gatewayHandler.ProductProxyV1)
+					}
+				}
+			}
+
 			categories := v2.Group("/categories")
 			{
 				categories.GET("", gatewayHandler.ProductProxyV1)
@@ -87,15 +154,16 @@ func SetupRoutes(
 				categories.GET("/slug/:slug", gatewayHandler.ProductProxyV1)
 				categories.GET("/tree", gatewayHandler.ProductProxyV1)
 
-				admin := categories.Group("")
-				admin.Use(middleware.AuthMiddleware())
-				admin.Use(middleware.RoleMiddleware("admin"))
+				categoryAdmin := categories.Group("")
+				categoryAdmin.Use(middleware.AuthMiddleware())
+				categoryAdmin.Use(middleware.RoleMiddleware("admin"))
 				{
-					admin.POST("", gatewayHandler.ProductProxyV1)
-					admin.PUT("/:id", gatewayHandler.ProductProxyV1)
-					admin.DELETE("/:id", gatewayHandler.ProductProxyV1)
+					categoryAdmin.POST("", gatewayHandler.ProductProxyV1)
+					categoryAdmin.PUT("/:id", gatewayHandler.ProductProxyV1)
+					categoryAdmin.DELETE("/:id", gatewayHandler.ProductProxyV1)
 				}
 			}
+
 			internal := v2.Group("/internal")
 			internal.Use(middleware.InternalAuthMiddleware())
 			{

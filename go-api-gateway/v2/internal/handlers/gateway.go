@@ -20,8 +20,10 @@ func NewGatewayHandler() *GatewayHandler {
 }
 
 func (h *GatewayHandler) AuthProxyV2(c *gin.Context) {
-	originalPath := c.Request.URL.Path
-	targetURL := config.AppConfig.AuthServiceURL + originalPath
+	targetURL := config.AppConfig.AuthServiceURL + c.Request.URL.Path
+	if c.Request.URL.RawQuery != "" {
+		targetURL += "?" + c.Request.URL.RawQuery
+	}
 
 	req, err := utils.CreateProxyRequest(c, targetURL)
 	if err != nil {
@@ -97,11 +99,11 @@ func (h *GatewayHandler) getServiceURL(service, path string) string {
 }
 
 func (h *GatewayHandler) VendorProxyV1(c *gin.Context) {
-	originalPath := c.Request.URL.Path
-
-	targetPath := strings.Replace(originalPath, "/api/v2", "/api/v1", 1)
-
+	targetPath := strings.Replace(c.Request.URL.Path, "/api/v2", "/api/v1", 1)
 	targetURL := config.AppConfig.VendorServiceURL + targetPath
+	if c.Request.URL.RawQuery != "" {
+		targetURL += "?" + c.Request.URL.RawQuery
+	}
 
 	req, err := utils.CreateProxyRequest(c, targetURL)
 	if err != nil {
@@ -123,11 +125,11 @@ func (h *GatewayHandler) VendorProxyV1(c *gin.Context) {
 }
 
 func (h *GatewayHandler) ProductProxyV1(c *gin.Context) {
-	originalPath := c.Request.URL.Path
-
-	targetPath := strings.Replace(originalPath, "/api/v2", "/api/v1", 1)
-
+	targetPath := strings.Replace(c.Request.URL.Path, "/api/v2", "/api/v1", 1)
 	targetURL := config.AppConfig.ProductServiceURL + targetPath
+	if c.Request.URL.RawQuery != "" {
+		targetURL += "?" + c.Request.URL.RawQuery
+	}
 
 	req, err := utils.CreateProxyRequest(c, targetURL)
 	if err != nil {

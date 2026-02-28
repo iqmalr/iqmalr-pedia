@@ -147,6 +147,22 @@ func SetupRoutes(
 				}
 			}
 
+			cart := v2.Group("/cart")
+			{
+				cart.GET("", gatewayHandler.TransactionProxyV1)
+				cart.DELETE("", gatewayHandler.TransactionProxyV1)
+				cart.POST("/items", gatewayHandler.TransactionProxyV1)
+				cart.PUT("/items/:id", gatewayHandler.TransactionProxyV1)
+				cart.DELETE("/items/:id", gatewayHandler.TransactionProxyV1)
+				cart.POST("/validate", gatewayHandler.TransactionProxyV1)
+
+				cartAuth := cart.Group("")
+				cartAuth.Use(middleware.AuthMiddleware())
+				{
+					cartAuth.POST("/merge", gatewayHandler.TransactionProxyV1)
+				}
+			}
+
 			categories := v2.Group("/categories")
 			{
 				categories.GET("", gatewayHandler.ProductProxyV1)

@@ -8,16 +8,17 @@ import (
 )
 
 type Config struct {
-	Port              string
-	AuthServiceURL    string
-	VendorServiceURL  string
-	RedisURL          string
-	RateLimit         int
-	RateLimitWindow   int
-	JWTSecret         string
-	Environment       string
-	InternalAPIKey    string
-	ProductServiceURL string
+	Port                  string
+	AuthServiceURL        string
+	VendorServiceURL      string
+	RedisURL              string
+	RateLimit             int
+	RateLimitWindow       int
+	JWTSecret             string
+	Environment           string
+	InternalAPIKey        string
+	ProductServiceURL     string
+	TransactionServiceURL string
 }
 
 var AppConfig *Config
@@ -34,7 +35,8 @@ func LoadConfig() {
 		Port:              getEnv("PORT", "8080"),
 		AuthServiceURL:    getEnv("AUTH_SERVICE_URL", "http://localhost:8082"),
 		VendorServiceURL:  getEnv("VENDOR_SERVICE_URL", "http://localhost:8083"),
-		ProductServiceURL: getEnv("PRODUCT_SERVICE_URL", "http://localhost:8084"),
+		ProductServiceURL:     getEnv("PRODUCT_SERVICE_URL", "http://localhost:8084"),
+		TransactionServiceURL: getEnv("TRANSACTION_SERVICE_URL", "http://localhost:8085"),
 		RedisURL:          getEnv("REDIS_URL", "redis://localhost:6379"),
 		RateLimit:         rateLimit,
 		RateLimitWindow:   rateLimitWindow,

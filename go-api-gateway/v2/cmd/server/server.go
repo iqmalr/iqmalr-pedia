@@ -42,6 +42,7 @@ func main() {
 	log.Printf("Environment: %s", config.AppConfig.Environment)
 	log.Printf("Auth Service v2: %s", config.AppConfig.AuthServiceURL)
 	log.Printf("Vendor Service v1: %s", config.AppConfig.VendorServiceURL)
+	log.Printf("Transaction Service v1: %s", config.AppConfig.TransactionServiceURL)
 
 	if err := router.Run(":" + config.AppConfig.Port); err != nil {
 		log.Fatal("Failed to start server:", err)

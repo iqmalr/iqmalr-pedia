@@ -2563,6 +2563,15 @@ This phase applies after vendor approval. The owner or vendor admin can manage t
 
 ## 5. SHOPPING CART (Prioritas: Tinggi - MVP)
 
+> **Keputusan Arsitektur (28 Feb 2026):**
+> - **Microservice:** Cart diimplementasikan di `go-transactions` (microservice baru, terpisah dari `go-product`)
+> - **Database:** `transaction_db` (PostgreSQL terpisah) — tabel `carts`, `cart_items`, nantinya `orders`, `order_items`, `payments`, dll
+> - **Port:** `8085`
+> - **Komunikasi:** `go-transactions` → `go-product` via HTTP internal API untuk validasi stok & ambil info produk
+> - **Auth:** Mendukung authenticated user (Bearer token) DAN guest user (X-Session-ID header)
+> - **Stok habis di cart:** Item tetap di cart dengan status `out_of_stock` / `insufficient_stock` (soft flag), bukan auto-remove. Memanfaatkan field `TrackInventory` dan `AllowBackorder` dari model Product.
+> - **Reserved Stock:** Di-skip untuk MVP; validasi stok dilakukan real-time saat add/update/checkout.
+
 ### 5.1 Cart Endpoints
 
 **Task 5.1.1: Get Cart**
@@ -2766,6 +2775,131 @@ This phase applies after vendor approval. The owner or vendor admin can manage t
     - session_id: required, must exist in carts table
 - Authorization: Bearer token (authenticated users only)
 - Prioritas: Medium
+
+
+### 5.2 Stock Validation & Management (Prioritas: Tinggi - MVP)
+
+Fitur ini menangani perubahan stok setelah produk masuk keranjang, memastikan konsistensi data dan pengalaman pengguna yang baik.
+ 
+**Task 5.2.1: Validasi Stok Saat Menambah/Mengupdate Item Cart**
+- **Deskripsi:** Saat pengguna menambahkan atau mengubah quantity item di keranjang, pastikan stok yang diminta tersedia.
+- **Langkah:**
+  - Di `POST /cart/items` dan `PUT /cart/items/{id}`, lakukan pengecekan stok produk/variant terkini sebelum menyimpan.
+  - Jika `quantity` > `stock`, kembalikan response error dengan kode 400 dan pesan yang jelas, misalnya:
+    ```json
+    {
+      "error": "Insufficient stock",
+      "available_stock": 5
+    }
+    ```
+- **Prioritas:** Tinggi (MVP)
+
+**Task 5.2.2: Sertakan Informasi Stok Terkini di Response Cart**
+- **Deskripsi:** Pastikan setiap response `GET /cart` menyertakan stok terkini untuk setiap item, sehingga frontend bisa menampilkan status stok secara real-time.
+- **Langkah:**
+  - Saat mengambil cart, join dengan tabel products/variants untuk mendapatkan kolom `stock` (seperti sudah ada di dokumentasi).
+  - Tidak perlu perubahan endpoint, hanya pastikan data stok selalu diambil fresh dari database, bukan dari data yang tersimpan di cart items.
+- **Prioritas:** Tinggi (MVP)
+
+**Task 5.2.3: Validasi Stok Sebelum Checkout**
+- **Deskripsi:** Sebelum membuat order, lakukan validasi stok untuk semua item di keranjang. Jika ada yang tidak mencukupi, batalkan proses dan beri tahu pengguna.
+- **Endpoint:** `POST /checkout` (anda perlu membuat endpoint ini terpisah, tapi di sini kita definisikan logika validasinya)
+- **Langkah:**
+  - Ambil semua item cart dengan informasi stok terkini.
+  - Untuk setiap item, bandingkan `quantity` di cart dengan `stock` di database.
+  - Jika semua cukup, kurangi stok (dalam transaction) dan lanjutkan pembuatan order.
+  - Jika ada yang kurang, kembalikan response 400 dengan daftar item bermasalah:
+    ```json
+    {
+      "error": "Stock insufficient for some items",
+      "items": [
+        {
+          "cart_item_id": 123,
+          "product_id": 456,
+          "name": "Product Name",
+          "requested_quantity": 3,
+          "available_stock": 1
+        }
+      ]
+    }
+    ```
+- **Prioritas:** Tinggi (MVP)
+
+**Task 5.2.4: Penanganan Konkurensi Stok (Race Condition)**
+- **Deskripsi:** Hindari dua pengguna checkout item yang sama secara bersamaan dengan menggunakan database transaction dan row locking.
+- **Langkah:**
+  - Saat proses checkout, gunakan transaction dengan `SELECT FOR UPDATE` pada baris stok produk/variant yang akan dikurangi.
+  - Setelah stok terkurangi, commit transaction. Jika ada konflik (deadlock atau row lock), tangani dengan mengulang transaksi atau memberi pesan error.
+  - Alternatif: gunakan optimistic locking dengan menambahkan kolom `version` pada tabel produk, dan cek versi saat update.
+- **Prioritas:** Sedang (pasca MVP jika traffic tinggi)
+
+**Task 5.2.5: (Opsional) Reserved Stock / Stock Locking**
+- **Deskripsi:** Kunci stok sementara saat item ditambahkan ke keranjang, agar pengguna lain tidak bisa mengambilnya selama periode tertentu (misal 15 menit).
+- **Langkah:**
+  - Tambahkan kolom `reserved_stock` pada tabel products/variants, atau hitung stok tersedia = `stock - total quantity di cart yang belum kadaluarsa`.
+  - Saat menambah item ke cart, kurangi stok tersedia (dengan validasi) dan catat waktu kadaluarsa cart (`expires_at`).
+  - Gunakan cron job atau event scheduler untuk membatalkan reserved stock jika cart expired.
+  - Saat checkout, kurangi stok aktual dan hapus reserved stock.
+- **Endpoint:** Tidak perlu endpoint baru, modifikasi logic `POST /cart/items` dan `PUT /cart/items/{id}` serta proses checkout.
+- **Prioritas:** Rendah (pasca MVP, untuk optimasi konversi)
+
+**Task 5.2.6: Endpoint Validasi Cart (Opsional)**
+- **Endpoint:** `POST /cart/validate`
+- **HTTP Method:** POST
+- **Deskripsi:** Memeriksa ketersediaan stok semua item di keranjang tanpa memulai proses checkout. Berguna untuk frontend melakukan validasi berkala atau sebelum menampilkan tombol checkout.
+- **Request Body:** None
+- **Response Format (200):**
+  ```json
+  {
+    "valid": true,
+    "items": [
+      {
+        "cart_item_id": 123,
+        "product_id": 456,
+        "name": "Product Name",
+        "requested_quantity": 2,
+        "available_stock": 10,
+        "status": "available"
+      }
+    ]
+  }
+  ```
+  Jika ada item bermasalah:
+  ```json
+  {
+    "valid": false,
+    "items": [
+      {
+        "cart_item_id": 123,
+        "product_id": 456,
+        "name": "Product Name",
+        "requested_quantity": 3,
+        "available_stock": 1,
+        "status": "insufficient"
+      },
+      {
+        "cart_item_id": 124,
+        "product_id": 457,
+        "name": "Product Name 2",
+        "requested_quantity": 1,
+        "available_stock": 0,
+        "status": "out_of_stock"
+      }
+    ]
+  }
+  ```
+- **Validasi:** Cart harus ada dan memiliki items.
+- **Authorization:** Bearer token (for authenticated users) or session_id (for guest users)
+- **Prioritas:** Sedang (bisa ditambahkan setelah MVP)
+
+**Task 5.2.7: Pembersihan Cart Expired dan Reserved Stock**
+- **Deskripsi:** Hapus atau tandai cart yang sudah melewati `expires_at`, dan jika menggunakan reserved stock, kembalikan stok yang dikunci.
+- **Langkah:**
+  - Buat scheduled job (cron) yang berjalan setiap beberapa menit.
+  - Job akan mencari cart dengan `expires_at < now()` dan status `active` (misal).
+  - Untuk setiap cart expired, hapus item-itemnya atau tandai cart sebagai expired.
+  - Jika menggunakan reserved stock, kurangi reserved stock atau kembalikan stok tersedia.
+- **Prioritas:** Sedang (penting jika menggunakan reserved stock, tapi untuk MVP bisa diabaikan jika stok langsung divalidasi saat checkout)
 
 ## 6. ORDERS (Prioritas: Tinggi - MVP)
 

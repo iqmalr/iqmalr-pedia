@@ -150,11 +150,38 @@ func (h *GatewayHandler) ProductProxyV1(c *gin.Context) {
 	}
 }
 
+func (h *GatewayHandler) TransactionProxyV1(c *gin.Context) {
+	targetPath := strings.Replace(c.Request.URL.Path, "/api/v2", "/api/v1", 1)
+	targetURL := config.AppConfig.TransactionServiceURL + targetPath
+	if c.Request.URL.RawQuery != "" {
+		targetURL += "?" + c.Request.URL.RawQuery
+	}
+
+	req, err := utils.CreateProxyRequest(c, targetURL)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create proxy request"})
+		return
+	}
+
+	resp, err := h.httpClient.Do(req)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "Transaction service unavailable"})
+		return
+	}
+	defer resp.Body.Close()
+
+	if err := utils.CopyResponse(c.Writer, resp); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to copy response"})
+		return
+	}
+}
+
 func (h *GatewayHandler) ServiceDiscovery(c *gin.Context) {
 	services := map[string]string{
-		"auth-v2":    config.AppConfig.AuthServiceURL,
-		"user-v1":    config.AppConfig.VendorServiceURL,
-		"product-v1": config.AppConfig.ProductServiceURL,
+		"auth-v2":        config.AppConfig.AuthServiceURL,
+		"user-v1":        config.AppConfig.VendorServiceURL,
+		"product-v1":     config.AppConfig.ProductServiceURL,
+		"transaction-v1": config.AppConfig.TransactionServiceURL,
 	}
 
 	c.JSON(http.StatusOK, gin.H{

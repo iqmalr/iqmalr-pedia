@@ -12,15 +12,23 @@ import (
 )
 
 type ProductInfo struct {
-	ID             uint    `json:"id"`
-	Name           string  `json:"name"`
-	Slug           string  `json:"slug"`
-	Price          float64 `json:"price"`
-	Stock          int     `json:"stock"`
-	TrackInventory bool    `json:"track_inventory"`
-	AllowBackorder bool    `json:"allow_backorder"`
-	IsPublished    bool    `json:"is_published"`
-	PrimaryImage   *Image  `json:"primary_image,omitempty"`
+	ID             uint        `json:"id"`
+	VendorID       uint        `json:"vendor_id"`
+	Name           string      `json:"name"`
+	Slug           string      `json:"slug"`
+	SKU            string      `json:"sku"`
+	Price          float64     `json:"price"`
+	Stock          int         `json:"stock"`
+	TrackInventory bool        `json:"track_inventory"`
+	AllowBackorder bool        `json:"allow_backorder"`
+	IsPublished    bool        `json:"is_published"`
+	Vendor         *VendorInfo `json:"vendor,omitempty"`
+	PrimaryImage   *Image      `json:"primary_image,omitempty"`
+}
+
+type VendorInfo struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
 }
 
 type Image struct {

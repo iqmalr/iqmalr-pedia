@@ -83,13 +83,13 @@ func SetupRoutes(
 				services.Any("/:service/*path", gatewayHandler.ProxyRequest)
 			}
 
-			vendors := v2.Group("/vendors")
-			vendors.Use(middleware.AuthMiddleware())
-			{
-				vendors.GET("", gatewayHandler.VendorProxyV1)
-				vendors.Any("/*path", gatewayHandler.VendorProxyV1)
-				vendors.POST("", gatewayHandler.VendorProxyV1)
-			}
+		vendors := v2.Group("/vendors")
+		vendors.Use(middleware.AuthMiddleware())
+		{
+			vendors.GET("", gatewayHandler.VendorProxyV1)
+			vendors.POST("", gatewayHandler.VendorProxyV1)
+			vendors.Any("/*path", gatewayHandler.VendorSmartProxy)
+		}
 
 			admin := v2.Group("/admin")
 			admin.Use(middleware.AuthMiddleware(), middleware.RoleMiddleware("admin"))
@@ -147,21 +147,33 @@ func SetupRoutes(
 				}
 			}
 
-			cart := v2.Group("/cart")
-			{
-				cart.GET("", gatewayHandler.TransactionProxyV1)
-				cart.DELETE("", gatewayHandler.TransactionProxyV1)
-				cart.POST("/items", gatewayHandler.TransactionProxyV1)
-				cart.PUT("/items/:id", gatewayHandler.TransactionProxyV1)
-				cart.DELETE("/items/:id", gatewayHandler.TransactionProxyV1)
-				cart.POST("/validate", gatewayHandler.TransactionProxyV1)
+		cart := v2.Group("/cart")
+		{
+			cart.GET("", gatewayHandler.TransactionProxyV1)
+			cart.DELETE("", gatewayHandler.TransactionProxyV1)
+			cart.POST("/items", gatewayHandler.TransactionProxyV1)
+			cart.PUT("/items/:id", gatewayHandler.TransactionProxyV1)
+			cart.DELETE("/items/:id", gatewayHandler.TransactionProxyV1)
+			cart.POST("/validate", gatewayHandler.TransactionProxyV1)
 
-				cartAuth := cart.Group("")
-				cartAuth.Use(middleware.AuthMiddleware())
-				{
-					cartAuth.POST("/merge", gatewayHandler.TransactionProxyV1)
-				}
+			cartAuth := cart.Group("")
+			cartAuth.Use(middleware.AuthMiddleware())
+			{
+				cartAuth.POST("/merge", gatewayHandler.TransactionProxyV1)
 			}
+		}
+
+		orders := v2.Group("/orders")
+		orders.Use(middleware.AuthMiddleware())
+		{
+			orders.POST("", gatewayHandler.TransactionProxyV1)
+			orders.GET("", gatewayHandler.TransactionProxyV1)
+			orders.GET("/:id", gatewayHandler.TransactionProxyV1)
+			orders.GET("/number/:orderNumber", gatewayHandler.TransactionProxyV1)
+			orders.PUT("/:id/cancel", gatewayHandler.TransactionProxyV1)
+			orders.PUT("/:id/status", gatewayHandler.TransactionProxyV1)
+			orders.PUT("/:id/items/:itemId/status", gatewayHandler.TransactionProxyV1)
+		}
 
 			categories := v2.Group("/categories")
 			{

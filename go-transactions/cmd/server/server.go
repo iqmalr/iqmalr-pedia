@@ -18,11 +18,16 @@ func main() {
 
 	cartRepo := repositories.NewCartRepository(database.GetDB())
 	cartItemRepo := repositories.NewCartItemRepository(database.GetDB())
+	orderRepo := repositories.NewOrderRepository(database.GetDB())
+
 	productClient := clients.NewProductClient()
+	authClient := clients.NewAuthClient()
 
 	cartService := services.NewCartService(cartRepo, cartItemRepo, productClient)
+	orderService := services.NewOrderService(orderRepo, cartRepo, cartItemRepo, productClient, authClient)
 
 	cartHandler := handlers.NewCartHandler(cartService)
+	orderHandler := handlers.NewOrderHandler(orderService)
 
 	router := gin.Default()
 
@@ -43,6 +48,24 @@ func main() {
 		authCart.Use(middleware.GatewayAuthMiddleware())
 		{
 			authCart.POST("/merge", cartHandler.MergeCart)
+		}
+
+		orders := v1.Group("/orders")
+		orders.Use(middleware.GatewayAuthMiddleware())
+		{
+			orders.POST("", orderHandler.CreateOrder)
+			orders.GET("", orderHandler.ListOrders)
+			orders.GET("/:id", orderHandler.GetOrderByID)
+			orders.GET("/number/:orderNumber", orderHandler.GetOrderByOrderNumber)
+			orders.PUT("/:id/cancel", orderHandler.CancelOrder)
+			orders.PUT("/:id/status", orderHandler.UpdateOrderStatus)
+			orders.PUT("/:id/items/:itemId/status", orderHandler.UpdateOrderItemFulfillment)
+		}
+
+		vendors := v1.Group("/vendors")
+		vendors.Use(middleware.GatewayAuthMiddleware())
+		{
+			vendors.GET("/:id/order-items", orderHandler.GetVendorOrderItems)
 		}
 	}
 

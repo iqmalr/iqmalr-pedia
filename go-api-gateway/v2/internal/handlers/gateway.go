@@ -176,6 +176,15 @@ func (h *GatewayHandler) TransactionProxyV1(c *gin.Context) {
 	}
 }
 
+func (h *GatewayHandler) VendorSmartProxy(c *gin.Context) {
+	path := c.Param("path")
+	if strings.Contains(path, "/order-items") {
+		h.TransactionProxyV1(c)
+		return
+	}
+	h.VendorProxyV1(c)
+}
+
 func (h *GatewayHandler) ServiceDiscovery(c *gin.Context) {
 	services := map[string]string{
 		"auth-v2":        config.AppConfig.AuthServiceURL,

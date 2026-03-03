@@ -41,6 +41,10 @@ func ConnectDB() {
 	err = db.AutoMigrate(
 		&models.Cart{},
 		&models.CartItem{},
+		&models.Order{},
+		&models.OrderItem{},
+		&models.OrderPayment{},
+		&models.OrderStatusHistory{},
 	)
 	if err != nil {
 		log.Fatal("Failed to migrate database: ", err)

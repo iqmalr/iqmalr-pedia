@@ -1,0 +1,39 @@
+package config
+
+import (
+	"log"
+	"os"
+
+	"github.com/joho/godotenv"
+)
+
+type AppConfigType struct {
+	Port                string
+	VendorServiceURL    string
+	AuthServiceURL      string
+	CloudinaryCloudName string
+	CloudinaryAPIKey    string
+	CloudinaryAPISecret string
+}
+
+var AppConfig = AppConfigType{
+	Port:                getEnv("PORT", "8084"),
+	VendorServiceURL:    getEnv("VENDOR_SERVICE_URL", "http://localhost:8081/api/v1"),
+	AuthServiceURL:      getEnv("AUTH_SERVICE_URL", "http://localhost:8082/api/v2"),
+	CloudinaryCloudName: getEnv("CLOUDINARY_CLOUD_NAME", ""),
+	CloudinaryAPIKey:    getEnv("CLOUDINARY_API_KEY", ""),
+	CloudinaryAPISecret: getEnv("CLOUDINARY_API_SECRET", ""),
+}
+
+func init() {
+	if err := godotenv.Load(); err != nil {
+		log.Println("Warning: .env file not found, using environment variables")
+	}
+}
+
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}

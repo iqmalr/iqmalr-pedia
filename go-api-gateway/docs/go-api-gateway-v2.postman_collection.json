@@ -1,0 +1,526 @@
+{
+  "info": {
+    "name": "go-api-gateway v2 API",
+    "description": "Comprehensive Postman collection for go-api-gateway v2. Covers root, health, service discovery, and all /api/v2 routes with role-based examples (customer, vendor, admin). Set collection variables for base URL and tokens."
+  , "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "2.0.0"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080" },
+    { "key": "api_prefix", "value": "/api/v2" },
+    { "key": "access_token_customer", "value": "" },
+    { "key": "access_token_vendor", "value": "" },
+    { "key": "access_token_admin", "value": "" },
+    { "key": "selected_role", "value": "customer" },
+    { "key": "sample_user_id", "value": "1" },
+    { "key": "sample_application_id", "value": "1" },
+    { "key": "sample_vendor_id", "value": "1" },
+    { "key": "sample_vendor_slug", "value": "my-vendor" }
+  ],
+  "item": [
+    {
+      "name": "Root",
+      "item": [
+        {
+          "name": "GET /",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/", "host": ["{{base_url}}"], "path": [""] } },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('200 OK', () => pm.response.code === 200);",
+              "const json = pm.response.json();",
+              "pm.expect(json).to.have.property('message');",
+              "pm.expect(json).to.have.property('version');",
+              "pm.expect(json).to.have.property('status');"
+            ]}}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/health", "host": ["{{base_url}}"], "path": ["health"] } },
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.code === 200);",
+            "pm.expect(pm.response.json()).to.have.property('status');"
+          ] } } ]
+        },
+        {
+          "name": "GET /ready",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/ready", "host": ["{{base_url}}"], "path": ["ready"] } }
+        }
+      ]
+    },
+    {
+      "name": "Service Discovery",
+      "item": [
+        {
+          "name": "GET /api/services",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/services", "host": ["{{base_url}}"], "path": ["api","services"] } },
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.code === 200);",
+            "pm.expect(pm.response.json()).to.have.property('services');"
+          ] } } ]
+        }
+      ]
+    },
+    {
+      "name": "Helpers",
+      "event": [
+        { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+          "// Automatically set Authorization header based on selected_role",
+          "const role = pm.collectionVariables.get('selected_role') || 'customer';",
+          "const tokenMap = {",
+          "  customer: pm.collectionVariables.get('access_token_customer'),",
+          "  vendor: pm.collectionVariables.get('access_token_vendor'),",
+          "  admin: pm.collectionVariables.get('access_token_admin'),",
+          "};",
+          "const token = tokenMap[role] || '';",
+          "if (token) { pm.request.headers.upsert({ key: 'Authorization', value: 'Bearer ' + token }); }",
+          "pm.request.headers.upsert({ key: 'Content-Type', value: 'application/json' });"
+        ] } }
+      ],
+      "item": [
+        {
+          "name": "Set role = customer",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/health", "host": ["{{base_url}}"], "path": ["health"] } },
+          "event": [ { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+            "pm.collectionVariables.set('selected_role', 'customer');"
+          ] } } ]
+        },
+        {
+          "name": "Set role = vendor",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/health", "host": ["{{base_url}}"], "path": ["health"] } },
+          "event": [ { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+            "pm.collectionVariables.set('selected_role', 'vendor');"
+          ] } } ]
+        },
+        {
+          "name": "Set role = admin",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/health", "host": ["{{base_url}}"], "path": ["health"] } },
+          "event": [ { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+            "pm.collectionVariables.set('selected_role', 'admin');"
+          ] } } ]
+        }
+      ]
+    },
+    {
+      "name": "Auth (v2 via Gateway)",
+      "item": [
+        {
+          "name": "POST /api/v2/auth/register (customer)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}{{api_prefix}}/auth/register", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","auth","register"] },
+            "header": [ {"key": "Content-Type", "value": "application/json"} ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"John Customer\",\n  \"email\": \"customer+1@example.com\",\n  \"phone\": \"+628111111111\",\n  \"password\": \"StrongPass123\",\n  \"role\": \"customer\"\n}" }
+          },
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.code === 201);"
+          ] } } ]
+        },
+        {
+          "name": "POST /api/v2/auth/register (vendor)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}{{api_prefix}}/auth/register", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","auth","register"] },
+            "header": [ {"key": "Content-Type", "value": "application/json"} ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Vera Vendor\",\n  \"email\": \"vendor+1@example.com\",\n  \"phone\": \"+628122222222\",\n  \"password\": \"StrongPass123\",\n  \"role\": \"vendor\"\n}" }
+          }
+        },
+        {
+          "name": "POST /api/v2/auth/register (admin)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}{{api_prefix}}/auth/register", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","auth","register"] },
+            "header": [ {"key": "Content-Type", "value": "application/json"} ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Adam Admin\",\n  \"email\": \"admin+1@example.com\",\n  \"phone\": \"+628133333333\",\n  \"password\": \"StrongPass123\",\n  \"role\": \"admin\"\n}" }
+          }
+        },
+        {
+          "name": "POST /api/v2/auth/login",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}{{api_prefix}}/auth/login", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","auth","login"] },
+            "header": [ {"key": "Content-Type", "value": "application/json"} ],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"customer+1@example.com\",\n  \"password\": \"StrongPass123\"\n}" }
+          },
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.code === 200);",
+            "const json = pm.response.json();",
+            "pm.collectionVariables.set('access_token_customer', json.token || pm.collectionVariables.get('access_token_customer'));",
+            "if (json.user && json.user.role === 'vendor') pm.collectionVariables.set('access_token_vendor', json.token);",
+            "if (json.user && json.user.role === 'admin') pm.collectionVariables.set('access_token_admin', json.token);"
+          ] } } ]
+        },
+        { "name": "POST /api/v2/auth/refresh", "request": { "method": "POST", "url": { "raw": "{{base_url}}{{api_prefix}}/auth/refresh", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","auth","refresh"] } } },
+        { "name": "POST /api/v2/auth/forgot-password", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "url": { "raw": "{{base_url}}{{api_prefix}}/auth/forgot-password", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","auth","forgot-password"] }, "body": {"mode":"raw","raw":"{\n  \"email\": \"customer+1@example.com\"\n}"} } },
+        { "name": "POST /api/v2/auth/reset-password", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "url": { "raw": "{{base_url}}{{api_prefix}}/auth/reset-password", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","auth","reset-password"] }, "body": {"mode":"raw","raw":"{\n  \"token\": \"<reset_token>\",\n  \"new_password\": \"NewStrongPass123\"\n}"} } },
+        { "name": "POST /api/v2/auth/verify-email", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "url": { "raw": "{{base_url}}{{api_prefix}}/auth/verify-email", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","auth","verify-email"] }, "body": {"mode":"raw","raw":"{\n  \"token\": \"<verify_token>\"\n}"} } },
+        { "name": "POST /api/v2/auth/resend-verification", "request": { "method": "POST", "url": { "raw": "{{base_url}}{{api_prefix}}/auth/resend-verification", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","auth","resend-verification"] } } },
+        {
+          "name": "POST /api/v2/auth/logout (auth required)",
+          "request": { "method": "POST", "url": { "raw": "{{base_url}}{{api_prefix}}/auth/logout", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","auth","logout"] } }
+        },
+        {
+          "name": "GET /api/v2/auth/me (auth required)",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}{{api_prefix}}/auth/me", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","auth","me"] } }
+        }
+      ]
+    },
+    {
+      "name": "Users (via Gateway)",
+      "item": [
+        {
+          "name": "GET /api/v2/users/me",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}{{api_prefix}}/users/me", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","users","me"] } }
+        },
+        {
+          "name": "PUT /api/v2/users/me",
+          "request": { "method": "PUT", "url": { "raw": "{{base_url}}{{api_prefix}}/users/me", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","users","me"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Updated Name\",\n  \"phone\": \"+628199999999\"\n}" } }
+        },
+        {
+          "name": "PUT /api/v2/users/me/password",
+          "request": { "method": "PUT", "url": { "raw": "{{base_url}}{{api_prefix}}/users/me/password", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","users","me","password"] },
+            "body": { "mode": "raw", "raw": "{\n  \"old_password\": \"StrongPass123\",\n  \"new_password\": \"NewStrongPass123\"\n}" } }
+        },
+        {
+          "name": "GET /api/v2/users (admin)",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}{{api_prefix}}/users/", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","users",""] } },
+          "event": [ { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+            "pm.collectionVariables.set('selected_role', 'admin');"
+          ] } } ]
+        },
+        {
+          "name": "GET /api/v2/users/:id (admin)",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}{{api_prefix}}/users/{{sample_user_id}}", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","users","{{sample_user_id}}"] } },
+          "event": [ { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+            "pm.collectionVariables.set('selected_role', 'admin');"
+          ] } } ]
+        },
+        {
+          "name": "PUT /api/v2/users/:id (admin)",
+          "request": { "method": "PUT", "url": { "raw": "{{base_url}}{{api_prefix}}/users/{{sample_user_id}}", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","users","{{sample_user_id}}"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Admin Updated\",\n  \"role\": \"vendor\"\n}" } },
+          "event": [ { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+            "pm.collectionVariables.set('selected_role', 'admin');"
+          ] } } ]
+        },
+        {
+          "name": "DELETE /api/v2/users/:id (admin)",
+          "request": { "method": "DELETE", "url": { "raw": "{{base_url}}{{api_prefix}}/users/{{sample_user_id}}", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","users","{{sample_user_id}}"] } },
+          "event": [ { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+            "pm.collectionVariables.set('selected_role', 'admin');"
+          ] } } ]
+        },
+        {
+          "name": "Addresses - GET /api/v2/users/me/addresses",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}{{api_prefix}}/users/me/addresses/", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","users","me","addresses",""] } }
+        },
+        {
+          "name": "Addresses - POST /api/v2/users/me/addresses",
+          "request": { "method": "POST", "url": { "raw": "{{base_url}}{{api_prefix}}/users/me/addresses/", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","users","me","addresses",""] },
+            "body": { "mode": "raw", "raw": "{\n  \"label\": \"Home\",\n  \"recipient_name\": \"John Customer\",\n  \"phone\": \"+628111111111\",\n  \"address_line1\": \"Jl. Melati No. 10\",\n  \"city\": \"Jakarta\",\n  \"state\": \"DKI\",\n  \"postal_code\": \"12345\",\n  \"country\": \"ID\",\n  \"is_default\": true\n}" } }
+        }
+      ]
+    },
+    {
+      "name": "Vendors (via Gateway to go-vendors v1)",
+      "item": [
+        {
+          "name": "POST /api/v2/vendor-applications (public submit)",
+          "request": { "method": "POST", "url": { "raw": "{{base_url}}{{api_prefix}}/vendor-applications", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","vendor-applications"] },
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"My Vendor\",\n  \"description\": \"We sell great stuff\",\n  \"contact_email\": \"vendor@example.com\",\n  \"contact_phone\": \"+628123456789\",\n  \"business_type\": \"company\",\n  \"tax_id\": \"NPWP-123\",\n  \"address_line1\": \"Jl. Mawar No. 1\",\n  \"city\": \"Jakarta\",\n  \"state\": \"DKI\",\n  \"postal_code\": \"12345\",\n  \"country\": \"ID\"\n}" } }
+        },
+        {
+          "name": "POST /api/v2/vendors (vendor)",
+          "request": { "method": "POST", "url": { "raw": "{{base_url}}{{api_prefix}}/vendors", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","vendors"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"My Vendor\",\n  \"description\": \"We sell great stuff\",\n  \"contact_email\": \"vendor@example.com\",\n  \"contact_phone\": \"+628123456789\",\n  \"business_type\": \"company\",\n  \"tax_id\": \"NPWP-123\",\n  \"address_line1\": \"Jl. Mawar No. 1\",\n  \"city\": \"Jakarta\",\n  \"state\": \"DKI\",\n  \"postal_code\": \"12345\",\n  \"country\": \"ID\"\n}" },
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "description": "Requires vendor or admin token."
+          },
+          "event": [ { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+            "pm.collectionVariables.set('selected_role', 'vendor');"
+          ] } } ]
+        },
+        {
+          "name": "GET /api/v2/vendors",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}{{api_prefix}}/vendors", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","vendors"] } }
+        },
+        {
+          "name": "GET /api/v2/vendors/:id",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}{{api_prefix}}/vendors/{{sample_vendor_id}}", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","vendors","{{sample_vendor_id}}"] } }
+        },
+        {
+          "name": "GET /api/v2/vendors/slug/:slug",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}{{api_prefix}}/vendors/slug/{{sample_vendor_slug}}", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","vendors","slug","{{sample_vendor_slug}}"] } }
+        },
+        {
+          "name": "PUT /api/v2/vendors/:id (vendor)",
+          "request": { "method": "PUT", "url": { "raw": "{{base_url}}{{api_prefix}}/vendors/{{sample_vendor_id}}", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","vendors","{{sample_vendor_id}}"] },
+            "body": { "mode": "raw", "raw": "{\n  \"description\": \"Updated desc\"\n}" } },
+          "event": [ { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+            "pm.collectionVariables.set('selected_role', 'vendor');"
+          ] } } ]
+        },
+        {
+          "name": "POST /api/v2/vendors/:id/logo (vendor)",
+          "request": { "method": "POST", "url": { "raw": "{{base_url}}{{api_prefix}}/vendors/{{sample_vendor_id}}/logo", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","vendors","{{sample_vendor_id}}","logo"] } },
+          "event": [ { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [ "pm.collectionVariables.set('selected_role', 'vendor');" ] } } ]
+        },
+        {
+          "name": "POST /api/v2/vendors/:id/banner (vendor)",
+          "request": { "method": "POST", "url": { "raw": "{{base_url}}{{api_prefix}}/vendors/{{sample_vendor_id}}/banner", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","vendors","{{sample_vendor_id}}","banner"] } },
+          "event": [ { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [ "pm.collectionVariables.set('selected_role', 'vendor');" ] } } ]
+        },
+        {
+          "name": "POST /api/v2/vendors/:id/invitations (vendor)",
+          "request": { "method": "POST", "url": { "raw": "{{base_url}}{{api_prefix}}/vendors/{{sample_vendor_id}}/invitations", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","vendors","{{sample_vendor_id}}","invitations"] },
+            "body": { "mode": "raw", "raw": "{\n  \"user_email\": \"teammate@example.com\",\n  \"role\": \"manager\"\n}" } },
+          "event": [ { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [ "pm.collectionVariables.set('selected_role', 'vendor');" ] } } ]
+        },
+        {
+          "name": "GET /api/v2/vendors/:id/users (vendor)",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}{{api_prefix}}/vendors/{{sample_vendor_id}}/users", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","vendors","{{sample_vendor_id}}","users"] } },
+          "event": [ { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [ "pm.collectionVariables.set('selected_role', 'vendor');" ] } } ]
+        },
+        {
+          "name": "PUT /api/v2/vendors/:id/users/:userId (vendor)",
+          "request": { "method": "PUT", "url": { "raw": "{{base_url}}{{api_prefix}}/vendors/{{sample_vendor_id}}/users/{{sample_user_id}}", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","vendors","{{sample_vendor_id}}","users","{{sample_user_id}}"] },
+            "body": { "mode": "raw", "raw": "{\n  \"role\": \"staff\"\n}" } },
+          "event": [ { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [ "pm.collectionVariables.set('selected_role', 'vendor');" ] } } ]
+        },
+        {
+          "name": "DELETE /api/v2/vendors/:id/users/:userId (vendor)",
+          "request": { "method": "DELETE", "url": { "raw": "{{base_url}}{{api_prefix}}/vendors/{{sample_vendor_id}}/users/{{sample_user_id}}", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","vendors","{{sample_vendor_id}}","users","{{sample_user_id}}"] } },
+          "event": [ { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [ "pm.collectionVariables.set('selected_role', 'vendor');" ] } } ]
+        },
+        {
+          "name": "ADMIN: PUT /api/v2/admin/vendor-applications/:id/approve",
+          "request": { "method": "PUT", "url": { "raw": "{{base_url}}{{api_prefix}}/admin/vendor-applications/{{sample_application_id}}/approve", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","admin","vendor-applications","{{sample_application_id}}","approve"] } },
+          "event": [ { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [ "pm.collectionVariables.set('selected_role', 'admin');" ] } } ]
+        },
+        {
+          "name": "ADMIN: PUT /api/v2/admin/vendor-applications/:id/reject",
+          "request": { "method": "PUT", "url": { "raw": "{{base_url}}{{api_prefix}}/admin/vendor-applications/{{sample_application_id}}/reject", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","admin","vendor-applications","{{sample_application_id}}","reject"] } },
+          "event": [ { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [ "pm.collectionVariables.set('selected_role', 'admin');" ] } } ]
+        }
+      ]
+    },
+    {
+      "name": "Categories (via Gateway to go-product v1)",
+      "item": [
+        {
+          "name": "Categories (Public: any authenticated)",
+          "item": [
+            {
+              "name": "GET {{api_prefix}}/categories (list)",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_url}}{{api_prefix}}/categories?parent_id=&level=&is_active=&sort=&order=",
+                  "host": ["{{base_url}}"],
+                  "path": ["{{api_prefix}}", "categories"],
+                  "query": [
+                    { "key": "parent_id", "value": "" },
+                    { "key": "level", "value": "" },
+                    { "key": "is_active", "value": "" },
+                    { "key": "sort", "value": "" },
+                    { "key": "order", "value": "" }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.code === 200);",
+                      "const json = pm.response.json();",
+                      "pm.expect(json).to.have.property('data');"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET {{api_prefix}}/categories/:id",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_url}}{{api_prefix}}/categories/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["{{api_prefix}}", "categories", "1"]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200 or 404', () => [200,404].includes(pm.response.code));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET {{api_prefix}}/categories/slug/:slug",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_url}}{{api_prefix}}/categories/slug/sample-slug",
+                  "host": ["{{base_url}}"],
+                  "path": ["{{api_prefix}}", "categories", "slug", "sample-slug"]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200 or 404', () => [200,404].includes(pm.response.code));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET {{api_prefix}}/categories/tree",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_url}}{{api_prefix}}/categories/tree?is_active=",
+                  "host": ["{{base_url}}"],
+                  "path": ["{{api_prefix}}", "categories", "tree"],
+                  "query": [ { "key": "is_active", "value": "" } ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.code === 200);",
+                      "const json = pm.response.json();",
+                      "pm.expect(json).to.have.property('data');"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Categories (Admin only)",
+          "item": [
+            {
+              "name": "POST {{api_prefix}}/categories",
+              "request": {
+                "method": "POST",
+                "header": [ { "key": "Content-Type", "value": "application/json" } ],
+                "url": {
+                  "raw": "{{base_url}}{{api_prefix}}/categories",
+                  "host": ["{{base_url}}"],
+                  "path": ["{{api_prefix}}", "categories"]
+                },
+                "body": { "mode": "raw", "raw": "{\n  \"parent_id\": null,\n  \"name\": \"Electronics\",\n  \"description\": \"All electronic items\",\n  \"icon\": \"mdi-chip\",\n  \"image_url\": \"https://example.com/images/electronics.jpg\",\n  \"level\": 1,\n  \"sort_order\": 0,\n  \"is_active\": true\n}" }
+              },
+              "event": [
+                { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+                  "pm.collectionVariables.set('selected_role', 'admin');"
+                ] } },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Created 201', () => pm.response.code === 201);",
+                      "const json = pm.response.json();",
+                      "pm.expect(json).to.have.property('id');",
+                      "pm.collectionVariables.set('created_category_id', json.id || '');",
+                      "pm.collectionVariables.set('created_category_slug', json.slug || '');"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT {{api_prefix}}/categories/:id",
+              "request": {
+                "method": "PUT",
+                "header": [ { "key": "Content-Type", "value": "application/json" } ],
+                "url": {
+                  "raw": "{{base_url}}{{api_prefix}}/categories/{{created_category_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["{{api_prefix}}", "categories", "{{created_category_id}}"]
+                },
+                "body": { "mode": "raw", "raw": "{\n  \"name\": \"Electronics & Gadgets\",\n  \"description\": \"Updated description\",\n  \"icon\": \"mdi-chip\",\n  \"image_url\": \"https://example.com/images/electronics-v2.jpg\",\n  \"level\": 1,\n  \"sort_order\": 1,\n  \"is_active\": true\n}" }
+              },
+              "event": [
+                { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+                  "pm.collectionVariables.set('selected_role', 'admin');"
+                ] } },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.code === 200);",
+                      "const json = pm.response.json();",
+                      "pm.expect(json).to.have.property('id');",
+                      "pm.test('Updated name', () => json.name && json.name.length > 0);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE {{api_prefix}}/categories/:id",
+              "request": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{base_url}}{{api_prefix}}/categories/{{created_category_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["{{api_prefix}}", "categories", "{{created_category_id}}"]
+                }
+              },
+              "event": [
+                { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+                  "pm.collectionVariables.set('selected_role', 'admin');"
+                ] } },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200 or 204', () => [200,204].includes(pm.response.code));"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Internal (guarded)",
+      "item": [
+        {
+          "name": "GET /api/v2/internal/* (proxied to auth)",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}{{api_prefix}}/internal/users/by-email?email=test@example.com", "host": ["{{base_url}}"], "path": ["{{api_prefix}}","internal","users","by-email"], "query": [{"key":"email","value":"test@example.com"}] } },
+          "description": "Requires Internal-Auth header as per service configuration; not usually called from external clients."
+        }
+      ]
+    }
+  ]
+}

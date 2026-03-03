@@ -35,7 +35,7 @@ func LoadConfig() {
 		RedisURL:        getEnv("REDIS_URL", "redis://localhost:6379"),
 		RateLimit:       rateLimit,
 		RateLimitWindow: rateLimitWindow,
-		JWTSecret:       getEnv("JWT_SECRET", "your-api-gateway-secret"),
+		JWTSecret:       getEnv("JWT_SECRET", "rahasia"),
 		Environment:     getEnv("ENVIRONMENT", "development"),
 	}
 }

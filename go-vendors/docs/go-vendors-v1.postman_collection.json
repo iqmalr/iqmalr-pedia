@@ -1,0 +1,268 @@
+{
+  "info": {
+    "name": "go-vendors v1 API",
+    "description": "Postman collection for go-vendors service (v1). Includes health, vendor management, and admin status update endpoints. Note: Service expects X-User-* headers injected by API Gateway. When testing directly against the service, you must provide these headers manually using the collection variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    { "key": "vendorBaseUrl", "value": "http://localhost:8083" },
+    { "key": "vendorApiPrefix", "value": "/api/v1" },
+    { "key": "x_user_id", "value": "1" },
+    { "key": "x_user_uuid", "value": "00000000-0000-0000-0000-000000000001" },
+    { "key": "x_user_email", "value": "vendor@example.com" },
+    { "key": "x_user_role", "value": "vendor" },
+    { "key": "sampleVendorId", "value": "1" },
+    { "key": "sampleSlug", "value": "my-vendor" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{vendorBaseUrl}}/health", "host": ["{{vendorBaseUrl}}"], "path": ["health"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "const json = pm.response.json();",
+                  "pm.test('Service ok', () => json.status === 'OK' && json.service === 'go-vendors');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Vendors",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Ensure X-User-* headers present for direct service calls",
+              "pm.request.headers.upsert({ key: 'X-User-ID', value: pm.collectionVariables.get('x_user_id') || '' });",
+              "pm.request.headers.upsert({ key: 'X-User-UUID', value: pm.collectionVariables.get('x_user_uuid') || '' });",
+              "pm.request.headers.upsert({ key: 'X-User-Email', value: pm.collectionVariables.get('x_user_email') || '' });",
+              "pm.request.headers.upsert({ key: 'X-User-Role', value: pm.collectionVariables.get('x_user_role') || '' });"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "POST /vendors (Create Vendor)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{vendorBaseUrl}}{{vendorApiPrefix}}/vendors", "host": ["{{vendorBaseUrl}}"], "path": ["{{vendorApiPrefix}}", "vendors"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Vendor\",\n  \"description\": \"We sell great stuff\",\n  \"contact_email\": \"vendor@example.com\",\n  \"contact_phone\": \"+628123456789\",\n  \"business_type\": \"company\",\n  \"tax_id\": \"NPWP-123\",\n  \"address_line1\": \"Jl. Mawar No. 1\",\n  \"address_line2\": \"RT 01/RW 02\",\n  \"city\": \"Jakarta\",\n  \"state\": \"DKI\",\n  \"postal_code\": \"12345\",\n  \"country\": \"ID\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.code === 201);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property('id');",
+                  "pm.collectionVariables.set('sampleVendorId', String(json.id || pm.collectionVariables.get('sampleVendorId')));",
+                  "pm.collectionVariables.set('sampleSlug', json.slug || pm.collectionVariables.get('sampleSlug'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /vendors (List Vendors)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{vendorBaseUrl}}{{vendorApiPrefix}}/vendors?page=1&limit=10&search=&status=&sort=created_at&order=desc",
+              "host": ["{{vendorBaseUrl}}"],
+              "path": ["{{vendorApiPrefix}}", "vendors"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "search", "value": "" },
+                { "key": "status", "value": "" },
+                { "key": "sort", "value": "created_at" },
+                { "key": "order", "value": "desc" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.have.property('data');",
+                  "pm.expect(json).to.have.property('pagination');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /vendors/:id (Get by ID)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{vendorBaseUrl}}{{vendorApiPrefix}}/vendors/{{sampleVendorId}}", "host": ["{{vendorBaseUrl}}"], "path": ["{{vendorApiPrefix}}", "vendors", "{{sampleVendorId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 or 404', () => [200,404].includes(pm.response.code));",
+                  "if (pm.response.code === 200) { pm.expect(pm.response.json()).to.have.property('id'); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /vendors/slug/:slug (Get by Slug)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{vendorBaseUrl}}{{vendorApiPrefix}}/vendors/slug/{{sampleSlug}}", "host": ["{{vendorBaseUrl}}"], "path": ["{{vendorApiPrefix}}", "vendors", "slug", "{{sampleSlug}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 or 404', () => [200,404].includes(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /vendors/:id (Update Vendor)",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{vendorBaseUrl}}{{vendorApiPrefix}}/vendors/{{sampleVendorId}}", "host": ["{{vendorBaseUrl}}"], "path": ["{{vendorApiPrefix}}", "vendors", "{{sampleVendorId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Vendor Updated\",\n  \"description\": \"Updated description\",\n  \"contact_email\": \"vendor@example.com\",\n  \"contact_phone\": \"+628123000000\",\n  \"business_type\": \"company\",\n  \"tax_id\": \"NPWP-456\",\n  \"address_line1\": \"Jl. Melati No. 2\",\n  \"address_line2\": \"\",\n  \"city\": \"Bandung\",\n  \"state\": \"Jawa Barat\",\n  \"postal_code\": \"40211\",\n  \"country\": \"ID\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "pm.expect(pm.response.json()).to.have.property('id');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /vendors/:id/logo (Upload Logo - placeholder)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{vendorBaseUrl}}{{vendorApiPrefix}}/vendors/{{sampleVendorId}}/logo", "host": ["{{vendorBaseUrl}}"], "path": ["{{vendorApiPrefix}}", "vendors", "{{sampleVendorId}}", "logo"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "pm.test('Message present', () => pm.response.json().message);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /vendors/:id/banner (Upload Banner - placeholder)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{vendorBaseUrl}}{{vendorApiPrefix}}/vendors/{{sampleVendorId}}/banner", "host": ["{{vendorBaseUrl}}"], "path": ["{{vendorApiPrefix}}", "vendors", "{{sampleVendorId}}", "banner"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "pm.test('Message present', () => pm.response.json().message);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin (Vendors)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Force admin role for these requests",
+              "pm.collectionVariables.set('x_user_role', 'admin');",
+              "pm.request.headers.upsert({ key: 'X-User-ID', value: pm.collectionVariables.get('x_user_id') || '' });",
+              "pm.request.headers.upsert({ key: 'X-User-UUID', value: pm.collectionVariables.get('x_user_uuid') || '' });",
+              "pm.request.headers.upsert({ key: 'X-User-Email', value: pm.collectionVariables.get('x_user_email') || '' });",
+              "pm.request.headers.upsert({ key: 'X-User-Role', value: pm.collectionVariables.get('x_user_role') || '' });"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "PUT /admin/vendors/:id/status (Update Status)",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{vendorBaseUrl}}{{vendorApiPrefix}}/admin/vendors/{{sampleVendorId}}/status", "host": ["{{vendorBaseUrl}}"], "path": ["{{vendorApiPrefix}}", "admin", "vendors", "{{sampleVendorId}}", "status"] },
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"active\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 or 403', () => [200,403].includes(pm.response.code));",
+                  "if (pm.response.code === 200) { pm.test('Has message', () => pm.response.json().message); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

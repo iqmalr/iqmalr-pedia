@@ -1,9 +1,10 @@
 package models
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"time"
 )
 
 type User struct {
@@ -13,22 +14,27 @@ type User struct {
 	Email           string         `json:"email" gorm:"uniqueIndex;not null"`
 	Phone           string         `json:"phone" gorm:"size:20"`
 	Password        string         `json:"-" gorm:"not null"`
-	RefreshToken    string         `json:"-" gorm:"type:text"`
+	Role            string         `json:"role" gorm:"not null;default:'customer'"`
+	IsActive        bool           `json:"is_active" gorm:"not null;default:true"`
 	EmailVerifiedAt *time.Time     `json:"email_verified_at"`
 	PhoneVerifiedAt *time.Time     `json:"phone_verified_at"`
-	Role            string         `json:"role" gorm:"not null;default:'customer'"`
-	AvatarURL       string         `json:"avatar_url" gorm:"size:500"`
-	IsActive        bool           `json:"is_active" gorm:"not null;default:true"`
 	LastLoginAt     *time.Time     `json:"last_login_at"`
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
 	DeletedAt       gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
-type VerificationRequest struct {
+type PasswordResetToken struct {
 	gorm.Model
 	UserID    uint      `gorm:"not null"`
 	Token     string    `gorm:"size:100;not null;uniqueIndex"`
-	Type      string    `gorm:"not null;size:20"` // 'email' or 'phone'
+	ExpiresAt time.Time `gorm:"not null"`
+	Used      bool      `gorm:"not null;default:false"`
+}
+
+type EmailVerificationToken struct {
+	gorm.Model
+	UserID    uint      `gorm:"not null"`
+	Token     string    `gorm:"size:100;not null;uniqueIndex"`
 	ExpiresAt time.Time `gorm:"not null"`
 }

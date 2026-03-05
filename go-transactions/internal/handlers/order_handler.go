@@ -220,7 +220,7 @@ func (h *OrderHandler) UpdateOrderItemFulfillment(c *gin.Context) {
 		return
 	}
 
-	orderID, err := strconv.ParseUint(c.Param("orderId"), 10, 32)
+	orderID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, response.MessageResponse{Message: "Invalid order ID"})
 		return

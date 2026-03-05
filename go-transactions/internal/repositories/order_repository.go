@@ -26,6 +26,8 @@ type OrderRepository interface {
 	GetItemWithOrder(itemID uint) (*models.OrderItem, *models.Order, error)
 
 	CreatePayment(payment *models.OrderPayment) error
+	GetPaymentByID(id uint) (*models.OrderPayment, error)
+	UpdatePayment(payment *models.OrderPayment) error
 	CreateStatusHistory(history *models.OrderStatusHistory) error
 }
 
@@ -236,6 +238,22 @@ func (r *orderRepository) ListItemsByVendorID(vendorID uint, query request.ListV
 
 func (r *orderRepository) CreatePayment(payment *models.OrderPayment) error {
 	return r.db.Create(payment).Error
+}
+
+func (r *orderRepository) GetPaymentByID(id uint) (*models.OrderPayment, error) {
+	var payment models.OrderPayment
+	err := r.db.Where("id = ?", id).First(&payment).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &payment, nil
+}
+
+func (r *orderRepository) UpdatePayment(payment *models.OrderPayment) error {
+	return r.db.Save(payment).Error
 }
 
 func (r *orderRepository) CreateStatusHistory(history *models.OrderStatusHistory) error {

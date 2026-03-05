@@ -60,17 +60,19 @@ type OrderItem struct {
 }
 
 type OrderPayment struct {
-	ID              uint       `json:"id" gorm:"primaryKey"`
-	OrderID         uint       `json:"order_id" gorm:"not null;index"`
-	PaymentMethod   string     `json:"payment_method" gorm:"not null;size:50"`
-	PaymentGateway  string     `json:"payment_gateway" gorm:"size:50"`
-	TransactionID   string     `json:"transaction_id" gorm:"size:255"`
-	Amount          float64    `json:"amount" gorm:"type:decimal(12,2);not null"`
-	Status          string     `json:"status" gorm:"not null;size:20;default:'pending'"`
-	PaymentProofURL string     `json:"payment_proof_url" gorm:"size:500"`
-	PaidAt          *time.Time `json:"paid_at"`
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
+	ID                   uint       `json:"id" gorm:"primaryKey"`
+	OrderID              uint       `json:"order_id" gorm:"not null;index"`
+	PaymentMethod        string     `json:"payment_method" gorm:"not null;size:50"`
+	PaymentGateway       string     `json:"payment_gateway" gorm:"size:50"`
+	TransactionID        string     `json:"transaction_id" gorm:"size:255"`
+	Amount               float64    `json:"amount" gorm:"type:decimal(12,2);not null"`
+	Status               string     `json:"status" gorm:"not null;size:20;default:'pending'"`
+	PaymentProofURL      string     `json:"payment_proof_url" gorm:"size:500"`
+	PaidAt               *time.Time `json:"paid_at"`
+	ExpiredAt            *time.Time `json:"expired_at"`
+	PaymentInstructions  string     `json:"-" gorm:"type:text"` // JSON: va_number, bank, etc.
+	CreatedAt            time.Time  `json:"created_at"`
+	UpdatedAt            time.Time  `json:"updated_at"`
 }
 
 type OrderStatusHistory struct {

@@ -22,14 +22,19 @@ func main() {
 
 	productClient := clients.NewProductClient()
 	authClient := clients.NewAuthClient()
+	midtransClient := clients.NewMidtransClient()
 
 	cartService := services.NewCartService(cartRepo, cartItemRepo, productClient)
 	orderService := services.NewOrderService(orderRepo, cartRepo, cartItemRepo, productClient, authClient)
+	paymentService := services.NewPaymentService(orderRepo, midtransClient)
 
 	cartHandler := handlers.NewCartHandler(cartService)
 	orderHandler := handlers.NewOrderHandler(orderService)
+	paymentHandler := handlers.NewPaymentHandler(paymentService)
 
 	router := gin.Default()
+
+	router.Static("/uploads", "./uploads")
 
 	v1 := router.Group("/api/v1")
 	{
@@ -66,6 +71,16 @@ func main() {
 		vendors.Use(middleware.GatewayAuthMiddleware())
 		{
 			vendors.GET("/:id/order-items", orderHandler.GetVendorOrderItems)
+		}
+
+		payments := v1.Group("/payments")
+		payments.Use(middleware.GatewayAuthMiddleware())
+		{
+			payments.GET("/methods", paymentHandler.GetPaymentMethods)
+			payments.POST("/process", paymentHandler.ProcessPayment)
+			payments.GET("/:id", paymentHandler.GetPaymentByID)
+			payments.POST("/:id/proof", paymentHandler.UploadPaymentProof)
+			payments.PUT("/:id/status", paymentHandler.UpdatePaymentStatus)
 		}
 	}
 

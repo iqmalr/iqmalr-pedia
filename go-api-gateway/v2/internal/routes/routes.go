@@ -175,6 +175,16 @@ func SetupRoutes(
 			orders.PUT("/:id/items/:itemId/status", gatewayHandler.TransactionProxyV1)
 		}
 
+		payments := v2.Group("/payments")
+		payments.Use(middleware.AuthMiddleware())
+		{
+			payments.GET("/methods", gatewayHandler.TransactionProxyV1)
+			payments.POST("/process", gatewayHandler.TransactionProxyV1)
+			payments.GET("/:id", gatewayHandler.TransactionProxyV1)
+			payments.POST("/:id/proof", gatewayHandler.TransactionProxyV1)
+			payments.PUT("/:id/status", gatewayHandler.TransactionProxyV1)
+		}
+
 			categories := v2.Group("/categories")
 			{
 				categories.GET("", gatewayHandler.ProductProxyV1)
